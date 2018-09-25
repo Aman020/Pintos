@@ -17,6 +17,9 @@ bool sema_try_down (struct semaphore *);
 void sema_up (struct semaphore *);
 void sema_self_test (void);
 
+void sema_down_for_waiting (struct semaphore *);
+void sema_up_for_waiting (struct semaphore *);
+
 /* Lock. */
 struct lock 
   {

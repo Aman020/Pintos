@@ -32,6 +32,9 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 
+
+static list_less_func waiting_list_less;
+
 /* Initializes semaphore SEMA to VALUE.  A semaphore is a
    nonnegative integer along with two atomic operators for
    manipulating it:
@@ -60,7 +63,8 @@ sema_init (struct semaphore *sema, unsigned value)
 void
 sema_down (struct semaphore *sema) 
 {
-  enum intr_level old_level;
+	
+ enum intr_level old_level;
 
   ASSERT (sema != NULL);
   ASSERT (!intr_context ());
@@ -68,11 +72,42 @@ sema_down (struct semaphore *sema)
   old_level = intr_disable ();
   while (sema->value == 0) 
     {
+		//list_insert_ordered(&sema->waiters, &thread_current ()->elem, waiting_list_less, NULL);
       list_push_back (&sema->waiters, &thread_current ()->elem);
       thread_block ();
     }
   sema->value--;
   intr_set_level (old_level);
+  
+  	//printf("SD \n");
+}
+
+/* Down or "P" operation on a semaphore.  Waits for SEMA's value
+   to become positive and then atomically decrements it.
+
+   This function may sleep, so it must not be called within an
+   interrupt handler.  This function may be called with
+   interrupts disabled, but if it sleeps then the next scheduled
+   thread will probably turn interrupts back on. */
+void
+sema_down_for_waiting (struct semaphore *sema) 
+{
+	
+ enum intr_level old_level;
+
+  ASSERT (sema != NULL);
+  ASSERT (!intr_context ());
+
+  old_level = intr_disable ();
+  //while (sema->value == 0) 
+    //{
+		list_insert_ordered(&sema->waiters, &thread_current ()->elem, waiting_list_less, NULL);
+      //list_push_back (&sema->waiters, &thread_current ()->elem);
+      thread_block ();
+    //}
+  //sema->value--;
+  intr_set_level (old_level);
+  	//printf("SD \n");
 }
 
 /* Down or "P" operation on a semaphore, but only if the
@@ -118,7 +153,27 @@ sema_up (struct semaphore *sema)
                                 struct thread, elem));
   sema->value++;
   intr_set_level (old_level);
+	//printf("sema : %d \n", sema->value);
 }
+
+/* Up or "V" operation on a semaphore.  Increments SEMA's value
+   and wakes up one thread of those waiting for SEMA, if any.
+
+   This function may be called from an interrupt handler. */
+void
+sema_up_for_waiting (struct semaphore *sema) 
+{
+  enum intr_level old_level;
+
+  ASSERT (sema != NULL);
+  ASSERT(!list_empty (&sema->waiters))
+  old_level = intr_disable ();
+  thread_unblock (list_entry (list_pop_front (&sema->waiters), struct thread, elem));
+  //sema->value++;
+  intr_set_level (old_level);
+	//printf("sema : %d \n", sema->value);
+}
+
 
 static void sema_test_helper (void *sema_);
 
@@ -336,3 +391,13 @@ cond_broadcast (struct condition *cond, struct lock *lock)
   while (!list_empty (&cond->waiters))
     cond_signal (cond, lock);
 }
+
+/* Waiting list less function */
+
+bool waiting_list_less (const struct list_elem *a,
+                             const struct list_elem *b,
+                             void *aux UNUSED) {
+								 //printf("$\n");
+								 return list_entry (a, struct thread, elem)->sleeping_ticks < list_entry (b, struct thread, elem)->sleeping_ticks;
+								 
+								 }

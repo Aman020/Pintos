@@ -359,6 +359,7 @@ intr_handler (struct intr_frame *frame)
 
       in_external_intr = true;
       yield_on_return = false;
+      //printf("%d \n", yield_on_return);
     }
 
   /* Invoke the interrupt's handler. */
@@ -373,7 +374,7 @@ intr_handler (struct intr_frame *frame)
     }
   else
     unexpected_interrupt (frame);
-
+     // printf("after handler ... %d \n", yield_on_return);
   /* Complete the processing of an external interrupt. */
   if (external) 
     {
@@ -383,8 +384,10 @@ intr_handler (struct intr_frame *frame)
       in_external_intr = false;
       pic_end_of_interrupt (frame->vec_no); 
 
-      if (yield_on_return) 
+      if (yield_on_return) {
+		//  printf("%d In external interupt handler \n", yield_on_return);
         thread_yield (); 
+	}
     }
 }
 

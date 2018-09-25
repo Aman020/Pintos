@@ -7,6 +7,8 @@
 #include "threads/interrupt.h"
 #include "threads/synch.h"
 #include "threads/thread.h"
+#include "threads/synch.h"
+
   
 /* See [8254] for hardware details of the 8254 timer chip. */
 
@@ -16,6 +18,11 @@
 #if TIMER_FREQ > 1000
 #error TIMER_FREQ <= 1000 recommended
 #endif
+
+/* Sema and lock for waiting list */
+static struct semaphore waiting_list;
+static struct lock sema_lock;			/* Lock used by sema. */
+
 
 /* Number of timer ticks since OS booted. */
 static int64_t ticks;
@@ -35,6 +42,9 @@ static void real_time_delay (int64_t num, int32_t denom);
 void
 timer_init (void) 
 {
+	lock_init (&sema_lock);
+	sema_init (&waiting_list, 6);
+  
   pit_configure_channel (0, 2, TIMER_FREQ);
   intr_register_ext (0x20, timer_interrupt, "8254 Timer");
 }
@@ -43,6 +53,7 @@ timer_init (void)
 void
 timer_calibrate (void) 
 {
+	
   unsigned high_bit, test_bit;
 
   ASSERT (intr_get_level () == INTR_ON);
@@ -90,10 +101,52 @@ void
 timer_sleep (int64_t ticks) 
 {
   int64_t start = timer_ticks ();
-
+	//static int count = 1;
+	//printf("Sleep = %d ticks = %lld running thread : %d \n", count++, (long long)ticks, thread_current()->tid );
+//	printf("Time sleep is called for ticks : %lld \n", (long long)timer_elapsed(start) );
   ASSERT (intr_get_level () == INTR_ON);
-  while (timer_elapsed (start) < ticks) 
-    thread_yield ();
+  /*
+  struct thread *intial_thread = thread_current();
+  
+  
+  enum intr_level old_level = intr_disable ();
+  thread_block();
+  intr_set_level (old_level);
+  */
+  //if ( thread_current()->tid != 10 ) {
+  
+	//thread_current()->sleeping_ticks = start + ticks;  
+	
+  //lock_acquire(&sema_eld();
+  //lock_release(&sema_lock);
+  //printf("Starting while loop ... \n");
+  //int c = 0;
+  //lock_acquire(&sema_lock);
+  //sema_up lock);
+  
+  //sema_down_for_waiting (&waiting_list);
+  
+  //printf("len: %d\n", list_size(&waiting_list.waiters) );
+  //thread_yi(&waiting_list);
+  //lock_release(&sema_lock);
+  
+  while (timer_elapsed (start) < ticks) //{
+	//printf("The start : %d and the ticks : %d\n", start, ticks);
+	thread_yield ();
+    //c++;
+	//}
+	//}
+	//thread_unblock(intial_thread);
+	//thread_yield ();
+   //printf("While loop run for %d \n", c);
+	
+	// }
+	//else {
+		//while (timer_elapsed (start) < ticks) {
+		//	thread_yield ();
+		//}
+	//}
+	
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -165,13 +218,22 @@ timer_print_stats (void)
 {
   printf ("Timer: %"PRId64" ticks\n", timer_ticks ());
 }
-
+
 /* Timer interrupt handler. */
 static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
+	//printf("%d", thread_current()->tid);
   ticks++;
   thread_tick ();
+  
+  /*while( !list_empty(&waiting_list.waiters) && list_entry (list_front(&waiting_list.waiters ), struct thread, elem)->sleeping_ticks <= timer_ticks() ) {
+	  //struct thread *t = list_entry (list_front(&waiting_list.waiters ), struct thread, elem);
+	  //printf("Waking up the thread ---------- %d \n", t->tid);
+     //lock_acquire(&sema_lock);
+     sema_up_for_waiting (&waiting_list);
+     //lock_release(&sema_lock);
+	}*/
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer
@@ -203,7 +265,7 @@ too_many_loops (unsigned loops)
 static void NO_INLINE
 busy_wait (int64_t loops) 
 {
-  while (loops-- > 0)
+  while (loops-- > 0);
     barrier ();
 }
 
@@ -217,6 +279,7 @@ real_time_sleep (int64_t num, int32_t denom)
      ---------------------- = NUM * TIMER_FREQ / DENOM ticks. 
      1 s / TIMER_FREQ ticks
   */
+	printf(" In real_time_sleep %lld \n", (long long )(num / denom ) );
   int64_t ticks = num * TIMER_FREQ / denom;
 
   ASSERT (intr_get_level () == INTR_ON);

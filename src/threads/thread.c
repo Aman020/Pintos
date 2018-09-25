@@ -24,6 +24,10 @@
    that are ready to run but not actually running. */
 static struct list ready_list;
 
+/* List of processes in THREAD_READY state, that is, processes
+   that are ready to run but not actually running. */
+//static struct list waiting_list;
+
 /* List of all processes.  Processes are added to this list
    when they are first scheduled and removed when they exit. */
 static struct list all_list;
@@ -92,12 +96,14 @@ thread_init (void)
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
+  //list_init (&waiting_list);
 
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
   init_thread (initial_thread, "main", PRI_DEFAULT);
   initial_thread->status = THREAD_RUNNING;
   initial_thread->tid = allocate_tid ();
+	//printf("Initial thread with tid = %d \n", initial_thread->tid);
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -105,6 +111,8 @@ thread_init (void)
 void
 thread_start (void) 
 {
+	//static int count = 0;
+	//printf("Thread start is called %d \n", count++);
   /* Create the idle thread. */
   struct semaphore idle_started;
   sema_init (&idle_started, 0);
@@ -122,6 +130,7 @@ thread_start (void)
 void
 thread_tick (void) 
 {
+	//printf("TT \n");
   struct thread *t = thread_current ();
 
   /* Update statistics. */
@@ -166,6 +175,8 @@ tid_t
 thread_create (const char *name, int priority,
                thread_func *function, void *aux) 
 {
+	//static int count = 0;
+	//printf("Thread create is called %d \n", count++);
   struct thread *t;
   struct kernel_thread_frame *kf;
   struct switch_entry_frame *ef;
@@ -184,23 +195,24 @@ thread_create (const char *name, int priority,
   tid = t->tid = allocate_tid ();
 
   /* Stack frame for kernel_thread(). */
-  kf = alloc_frame (t, sizeof *kf);
+  kf = (struct kernel_thread_frame *)alloc_frame (t, sizeof *kf);
   kf->eip = NULL;
   kf->function = function;
   kf->aux = aux;
 
   /* Stack frame for switch_entry(). */
-  ef = alloc_frame (t, sizeof *ef);
+  ef = (struct switch_entry_frame *)alloc_frame (t, sizeof *ef);
   ef->eip = (void (*) (void)) kernel_thread;
 
   /* Stack frame for switch_threads(). */
-  sf = alloc_frame (t, sizeof *sf);
+  sf = (struct switch_threads_frame *)alloc_frame (t, sizeof *sf);
   sf->eip = switch_entry;
   sf->ebp = 0;
 
   /* Add to run queue. */
   thread_unblock (t);
-
+	//printf("Thread create is with tid = %d \n", tid);
+	//thread_print_stats();
   return tid;
 }
 
@@ -213,11 +225,15 @@ thread_create (const char *name, int priority,
 void
 thread_block (void) 
 {
+	//printf("Blocking the thread : %d \n", thread_current()->tid);
   ASSERT (!intr_context ());
   ASSERT (intr_get_level () == INTR_OFF);
 
+	//printf("%d", thread_current()->tid );
   thread_current ()->status = THREAD_BLOCKED;
   schedule ();
+  //printf("Thread block .... \n");
+  
 }
 
 /* Transitions a blocked thread T to the ready-to-run state.
@@ -281,7 +297,8 @@ void
 thread_exit (void) 
 {
   ASSERT (!intr_context ());
-
+	//static int count = 1;
+	//printf(" # thread_exit is called for = %d --- tid = %d \n", count++, thread_current()->tid);
 #ifdef USERPROG
   process_exit ();
 #endif
@@ -293,6 +310,7 @@ thread_exit (void)
   list_remove (&thread_current()->allelem);
   thread_current ()->status = THREAD_DYING;
   schedule ();
+
   NOT_REACHED ();
 }
 
@@ -303,15 +321,19 @@ thread_yield (void)
 {
   struct thread *cur = thread_current ();
   enum intr_level old_level;
+	//printf("In thread yeild %s\n", cur->name);
   
   ASSERT (!intr_context ());
 
   old_level = intr_disable ();
-  if (cur != idle_thread) 
+  if (cur != idle_thread) {
     list_push_back (&ready_list, &cur->elem);
+    //printf(" $$$$$$$$ Swapping \n");
+    }
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
+  //printf("In thread yeil %d \n", cur->tid);
 }
 
 /* Invoke function 'func' on all threads, passing along 'aux'.
@@ -319,6 +341,7 @@ thread_yield (void)
 void
 thread_foreach (thread_action_func *func, void *aux)
 {
+	//printf("thread_foreach is called **************");
   struct list_elem *e;
 
   ASSERT (intr_get_level () == INTR_OFF);
@@ -350,6 +373,7 @@ void
 thread_set_nice (int nice UNUSED) 
 {
   /* Not yet implemented. */
+	thread_current()->nice = nice;
 }
 
 /* Returns the current thread's nice value. */
@@ -357,7 +381,7 @@ int
 thread_get_nice (void) 
 {
   /* Not yet implemented. */
-  return 0;
+  return thread_current()->nice;
 }
 
 /* Returns 100 times the system load average. */
@@ -375,7 +399,7 @@ thread_get_recent_cpu (void)
   /* Not yet implemented. */
   return 0;
 }
-
+
 /* Idle thread.  Executes when no other thread is ready to run.
 
    The idle thread is initially put on the ready list by
@@ -388,10 +412,11 @@ thread_get_recent_cpu (void)
 static void
 idle (void *idle_started_ UNUSED) 
 {
+	
   struct semaphore *idle_started = idle_started_;
   idle_thread = thread_current ();
   sema_up (idle_started);
-
+	//printf("In idle function ... %d \n", idle_thread->tid);
   for (;;) 
     {
       /* Let someone else run. */
@@ -422,9 +447,10 @@ kernel_thread (thread_func *function, void *aux)
 
   intr_enable ();       /* The scheduler runs with interrupts off. */
   function (aux);       /* Execute the thread function. */
+	//printf("Thread exit is being called from kernel_thread \n");
   thread_exit ();       /* If function() returns, kill the thread. */
 }
-
+
 /* Returns the running thread. */
 struct thread *
 running_thread (void) 
@@ -467,6 +493,7 @@ init_thread (struct thread *t, const char *name, int priority)
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
   intr_set_level (old_level);
+	//printf("Thread init is called with magic no. = %d And not list size is : %d \n", t->magic, list_size(&all_list));
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and
@@ -490,10 +517,12 @@ alloc_frame (struct thread *t, size_t size)
 static struct thread *
 next_thread_to_run (void) 
 {
-  if (list_empty (&ready_list))
+  if (list_empty (&ready_list)) {
     return idle_thread;
-  else
+	}  else {
+		//printf("I");
     return list_entry (list_pop_front (&ready_list), struct thread, elem);
+	}
 }
 
 /* Completes a thread switch by activating the new thread's page
@@ -539,7 +568,11 @@ thread_schedule_tail (struct thread *prev)
     {
       ASSERT (prev != cur);
       palloc_free_page (prev);
+	//printf("Inside thread_schedule_tail to free the page of thread ... \n");
     }
+	//printf("Inside thread_schedule_tail \n");
+	//if ( flag_block )
+		//printf("T\n");
 }
 
 /* Schedules a new process.  At entry, interrupts must be off and
@@ -559,10 +592,16 @@ schedule (void)
   ASSERT (intr_get_level () == INTR_OFF);
   ASSERT (cur->status != THREAD_RUNNING);
   ASSERT (is_thread (next));
-
+	//printf("In schedule : %d \n", cur != next);
   if (cur != next)
     prev = switch_threads (cur, next);
+//	else 
+		//printf("S");
+		//printf("The equal...!!!");
   thread_schedule_tail (prev);
+	//printf("s");
+	//printf("In schedule,.. the current thread tid is = %d \n", cur->tid);
+	//printf("%d", thread_current()->tid);
 }
 
 /* Returns a tid to use for a new thread. */
@@ -575,10 +614,11 @@ allocate_tid (void)
   lock_acquire (&tid_lock);
   tid = next_tid++;
   lock_release (&tid_lock);
+	//printf("Returning tid = %d \n", tid);
 
   return tid;
 }
-
+
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
