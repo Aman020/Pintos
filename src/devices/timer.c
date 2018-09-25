@@ -115,7 +115,7 @@ timer_sleep (int64_t ticks)
   */
   //if ( thread_current()->tid != 10 ) {
   
-	//thread_current()->sleeping_ticks = start + ticks;  
+	thread_current()->sleeping_ticks = start + ticks;  
 	
   //lock_acquire(&sema_eld();
   //lock_release(&sema_lock);
@@ -124,15 +124,15 @@ timer_sleep (int64_t ticks)
   //lock_acquire(&sema_lock);
   //sema_up lock);
   
-  //sema_down_for_waiting (&waiting_list);
+  sema_down_for_waiting (&waiting_list);
   
   //printf("len: %d\n", list_size(&waiting_list.waiters) );
   //thread_yi(&waiting_list);
   //lock_release(&sema_lock);
   
-  while (timer_elapsed (start) < ticks) //{
+  //while (timer_elapsed (start) < ticks) //{
 	//printf("The start : %d and the ticks : %d\n", start, ticks);
-	thread_yield ();
+	//thread_yield ();
     //c++;
 	//}
 	//}
