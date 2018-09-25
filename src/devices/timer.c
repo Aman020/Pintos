@@ -227,13 +227,13 @@ timer_interrupt (struct intr_frame *args UNUSED)
   ticks++;
   thread_tick ();
   
-  /*while( !list_empty(&waiting_list.waiters) && list_entry (list_front(&waiting_list.waiters ), struct thread, elem)->sleeping_ticks <= timer_ticks() ) {
+  while( !list_empty(&waiting_list.waiters) && list_entry (list_front(&waiting_list.waiters ), struct thread, elem)->sleeping_ticks <= timer_ticks() ) {
 	  //struct thread *t = list_entry (list_front(&waiting_list.waiters ), struct thread, elem);
 	  //printf("Waking up the thread ---------- %d \n", t->tid);
      //lock_acquire(&sema_lock);
      sema_up_for_waiting (&waiting_list);
      //lock_release(&sema_lock);
-	}*/
+	}
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer
