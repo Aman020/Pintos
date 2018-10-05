@@ -75,6 +75,9 @@ static void schedule (void);
 void thread_schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
 
+
+static list_less_func ready_list_less;
+
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
    general and it is possible in this case only because loader.S
@@ -176,7 +179,7 @@ thread_create (const char *name, int priority,
                thread_func *function, void *aux) 
 {
 	//static int count = 0;
-	//printf("Thread create is called %d \n", count++);
+	
   struct thread *t;
   struct kernel_thread_frame *kf;
   struct switch_entry_frame *ef;
@@ -184,7 +187,7 @@ thread_create (const char *name, int priority,
   tid_t tid;
 
   ASSERT (function != NULL);
-
+  
   /* Allocate thread. */
   t = palloc_get_page (PAL_ZERO);
   if (t == NULL)
@@ -194,6 +197,7 @@ thread_create (const char *name, int priority,
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
 
+	//printf("Thread create is called for %d \n", count++);
   /* Stack frame for kernel_thread(). */
   kf = (struct kernel_thread_frame *)alloc_frame (t, sizeof *kf);
   kf->eip = NULL;
@@ -211,6 +215,13 @@ thread_create (const char *name, int priority,
 
   /* Add to run queue. */
   thread_unblock (t);
+  
+  if ( thread_current()->priority <= priority ) {
+		//printf("::::::::::::: %d <= %d\n", thread_current()->priority, priority);
+		//thread_current ()->priority = new_priority;
+		thread_yield();
+	}
+  //thread_yield();
 	//printf("Thread create is with tid = %d \n", tid);
 	//thread_print_stats();
   return tid;
@@ -253,7 +264,8 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  list_push_back (&ready_list, &t->elem);
+  //list_push_back (&ready_list, &t->elem);
+  list_insert_ordered(&ready_list, &t->elem, ready_list_less, NULL);
   t->status = THREAD_READY;
   intr_set_level (old_level);
 }
@@ -327,7 +339,8 @@ thread_yield (void)
 
   old_level = intr_disable ();
   if (cur != idle_thread) {
-    list_push_back (&ready_list, &cur->elem);
+    //list_push_back (&ready_list, &cur->elem);
+    list_insert_ordered(&ready_list, &cur->elem, ready_list_less, NULL);
     //printf(" $$$$$$$$ Swapping \n");
     }
   cur->status = THREAD_READY;
@@ -358,7 +371,13 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority) 
 {
-  thread_current ()->priority = new_priority;
+	if ( !list_empty(&ready_list) && list_entry (list_front(&ready_list ), struct thread, elem)->priority > new_priority ) {
+		thread_current ()->priority = new_priority;
+		thread_yield();
+	}
+	else {
+		thread_current ()->priority = new_priority;
+	}
 }
 
 /* Returns the current thread's priority. */
@@ -622,3 +641,13 @@ allocate_tid (void)
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
+
+/* ready list less function */
+
+bool ready_list_less (const struct list_elem *a,
+                             const struct list_elem *b,
+                             void *aux UNUSED) {
+								 //printf("$\n");
+								 return list_entry (a, struct thread, elem)->priority >= list_entry (b, struct thread, elem)->priority;
+								 
+								 }
