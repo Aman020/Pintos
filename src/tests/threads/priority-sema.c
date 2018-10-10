@@ -32,6 +32,7 @@ test_priority_sema (void)
 
   for (i = 0; i < 10; i++) 
     {
+	//msg("Sema up is called %d \n", i);
       sema_up (&sema);
       msg ("Back in main thread."); 
     }
@@ -40,6 +41,7 @@ test_priority_sema (void)
 static void
 priority_sema_thread (void *aux UNUSED) 
 {
+//msg("Sema down is called \n");
   sema_down (&sema);
   msg ("Thread %s woke up.", thread_name ());
 }

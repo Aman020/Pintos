@@ -194,6 +194,7 @@ thread_create (const char *name, int priority,
     return TID_ERROR;
 
   /* Initialize thread. */
+  t->priority = priority;
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
 
@@ -221,6 +222,7 @@ thread_create (const char *name, int priority,
 		//thread_current ()->priority = new_priority;
 		thread_yield();
 	}
+	
   //thread_yield();
 	//printf("Thread create is with tid = %d \n", tid);
 	//thread_print_stats();
@@ -265,9 +267,18 @@ thread_unblock (struct thread *t)
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
   //list_push_back (&ready_list, &t->elem);
+  
   list_insert_ordered(&ready_list, &t->elem, ready_list_less, NULL);
   t->status = THREAD_READY;
+  //schedule ();
+  
+  if ( thread_current() != idle_thread && list_entry (list_front(&ready_list ), struct thread, elem)->priority > thread_current()->priority )
+  //if ( thread_current() != idle_thread && t->priority > thread_current()->priority )
+	thread_yield();
   intr_set_level (old_level);
+  //thread_yield();
+  //thread_yield();
+  //schedule ();
 }
 
 /* Returns the name of the running thread. */
@@ -371,20 +382,37 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority) 
 {
+	
+	enum intr_level old_level;
+	//printf("In thread yeild %s\n", cur->name);
+  
+  ASSERT (!intr_context ());
+
+  old_level = intr_disable ();
+  thread_current ()->priority = new_priority;
 	if ( !list_empty(&ready_list) && list_entry (list_front(&ready_list ), struct thread, elem)->priority > new_priority ) {
-		thread_current ()->priority = new_priority;
 		thread_yield();
 	}
-	else {
-		thread_current ()->priority = new_priority;
-	}
+	
+	intr_set_level (old_level);
 }
 
 /* Returns the current thread's priority. */
 int
 thread_get_priority (void) 
 {
-  return thread_current ()->priority;
+	enum intr_level old_level;
+	//printf("In thread yeild %s\n", thread_current()->name);
+  
+  ASSERT (!intr_context ());
+
+  old_level = intr_disable ();
+  
+  int p = thread_current ()->priority;
+  
+  intr_set_level (old_level);
+  //return thread_current ()->priority;
+  return p;
 }
 
 /* Sets the current thread's nice value to NICE. */
@@ -466,7 +494,7 @@ kernel_thread (thread_func *function, void *aux)
 
   intr_enable ();       /* The scheduler runs with interrupts off. */
   function (aux);       /* Execute the thread function. */
-	//printf("Thread exit is being called from kernel_thread \n");
+//	printf("Thread exit is being called from kernel_thread \n");
   thread_exit ();       /* If function() returns, kill the thread. */
 }
 
@@ -648,6 +676,6 @@ bool ready_list_less (const struct list_elem *a,
                              const struct list_elem *b,
                              void *aux UNUSED) {
 								 //printf("$\n");
-								 return list_entry (a, struct thread, elem)->priority >= list_entry (b, struct thread, elem)->priority;
+								 return list_entry (a, struct thread, elem)->priority > list_entry (b, struct thread, elem)->priority;
 								 
 								 }
