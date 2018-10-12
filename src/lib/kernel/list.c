@@ -459,6 +459,29 @@ list_insert_ordered (struct list *list, struct list_elem *elem,
   return list_insert (e, elem);
 }
 
+/* Inserts ELEM in the position in LIST, which must be
+   sorted according to LESS given auxiliary data AUX.
+   Runs in O(n) average case in the number of elements in LIST. */
+struct list_elem *
+list_insert_unique (struct list *list, struct list_elem *elem,
+                     list_less_func *less, void *aux)
+{
+  struct list_elem *e;
+
+  ASSERT (list != NULL);
+  ASSERT (elem != NULL);
+  ASSERT (less != NULL);
+
+  for (e = list_begin (list); e != list_end (list); e = list_next (e))
+    if (less (elem, e, aux)) {
+      break;
+	}
+  list_insert (e, elem);
+  if(e != list_end (list))
+	return e;
+  return NULL;
+}
+
 /* Iterates through LIST and removes all but the first in each
    set of adjacent elements that are equal according to LESS
    given auxiliary data AUX.  If DUPLICATES is non-null, then the

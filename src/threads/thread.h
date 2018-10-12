@@ -4,6 +4,7 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#include "threads/synch.h"
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -114,11 +115,12 @@ struct thread
   };
 
 /* A counting semaphore. */
-struct priority_values
-  {
-    int value;						/* Current value. */
-    struct list_elem pelem;			/* List of waiting threads. */
-  };
+struct priority_values {
+	int value;						/* Current value. */
+	int set;						/* Current value. */
+	struct lock *l;					/* Corresponding lock. */
+	struct list_elem pelem;			/* List of waiting threads. */
+};
 
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
@@ -148,7 +150,7 @@ void thread_yield (void);
 typedef void thread_action_func (struct thread *t, void *aux);
 void thread_foreach (thread_action_func *, void *);
 
-void thread_set_priority_initial (void);
+void thread_set_priority_initial (struct lock *);
 int thread_get_priority (void);
 void thread_set_priority (int);
 void thread_set_priority_donation (int);
@@ -159,5 +161,7 @@ int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 
 
+
+static list_less_func priority_list_less;
 //bool sort_required_ready_list = false;
 #endif /* threads/thread.h */

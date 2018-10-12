@@ -56,6 +56,9 @@ test_priority_donate_multiple2 (void)
        PRI_DEFAULT + 5, thread_get_priority ());
 
   lock_release (&b);
+  //msg (" release b Main thread should have priority %d.  Actual priority: %d.",
+    //   PRI_DEFAULT, thread_get_priority ());
+
   msg ("Threads b, a, c should have just finished, in that order.");
   msg ("Main thread should have priority %d.  Actual priority: %d.",
        PRI_DEFAULT, thread_get_priority ());
@@ -67,7 +70,7 @@ a_thread_func (void *lock_)
   struct lock *lock = lock_;
 
   lock_acquire (lock);
-  msg ("Thread a acquired lock a.");
+  msg ("Thread a acquired lock a."); //%d", thread_get_priority () );
   lock_release (lock);
   msg ("Thread a finished.");
 }
@@ -78,7 +81,7 @@ b_thread_func (void *lock_)
   struct lock *lock = lock_;
 
   lock_acquire (lock);
-  msg ("Thread b acquired lock b.");
+  msg ("Thread b acquired lock b."); //%d", thread_get_priority () );
   lock_release (lock);
   msg ("Thread b finished.");
 }

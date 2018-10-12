@@ -39,6 +39,8 @@ static list_less_func ready_list_less;
 
 static list_less_func cond_list_less;
 
+static list_less_func priority_list_less;
+
 /* Initializes semaphore SEMA to VALUE.  A semaphore is a
    nonnegative integer along with two atomic operators for
    manipulating it:
@@ -279,14 +281,32 @@ lock_acquire (struct lock *lock)
 		//lock->holder->initial_priority = lock->holder->priority;
 		//struct thread *t = lock->holder;
 		struct priority_values pv;
+		pv.l = lock;
 		pv.value = lock->holder->priority;
+		pv.set = p;
 		//printf("l = %d, %d\n", pv.value, p);
 		
 		//if (lock->before_donations != -1)
 		//lock->before_donations = lock->holder->priority;
 		//list_init(&lock->holder->priority_list);
 		//lock->holder->initial_priority = lock->holder->priority;
-		list_push_front (&lock->holder->priority_list, &pv.pelem);
+		
+		//list_push_front (&lock->holder->priority_list, &pv.pelem);
+		if( !list_empty(&lock->holder->priority_list) ) {
+			//printf("------- %d\n", pv.value);
+			pv.value = list_entry (list_front(&lock->holder->priority_list), struct priority_values, pelem)->value;
+			//printf("------- %d\n", pv.value);
+		}
+			struct list_elem *e = list_insert_unique (&lock->holder->priority_list, &pv.pelem, priority_list_less, NULL);
+			if ( e != NULL ) {
+				//struct priority_values p_v = 
+				pv.value = list_entry (e, struct priority_values, pelem)->value;
+				//printf("Changing ... %d \n", pv.value);
+				list_remove (e);
+			}
+		//}
+		//list_insert_ordered(&sema->waiters, &thread_current ()->elem, waiting_list_less, NULL);
+		
 		//lock->holder->initial_priority = lock->holder->priority;
 		lock->holder->priority = p;
 		lock->donated = true;
@@ -297,9 +317,9 @@ lock_acquire (struct lock *lock)
 	}
 	intr_set_level (old_level);
 	
-  sema_down (&lock->semaphore);
-  lock->donated = false;
-  lock->holder = thread_current ();
+	sema_down (&lock->semaphore);
+	lock->donated = false;
+	lock->holder = thread_current ();
 }
 
 /* Tries to acquires LOCK and returns true if successful or false
@@ -330,26 +350,19 @@ lock_try_acquire (struct lock *lock)
 void
 lock_release (struct lock *lock) 
 {
-  ASSERT (lock != NULL);
-  ASSERT (lock_held_by_current_thread (lock));
+	ASSERT (lock != NULL);
+	ASSERT (lock_held_by_current_thread (lock));
 
-  lock->holder = NULL;
-  
-  //printf(" t = %d", thread_get_priority());
-  //enum intr_level old_level;
-  //old_level = intr_disable ();
-  //if(lock->before_donations != -1)
-	//thread_set_priority_initial(lock->before_donations);
-	
-  if(lock->donated)
-    thread_set_priority_initial();
-    
-  //lock->donated = false;
-  //intr_set_level (old_level);
-  //lock->before_donations = -1;
-  //thread_set_priority_initial();
-  sema_up (&lock->semaphore);
-  //thread_set_priority(31);
+	if(lock->donated)
+		thread_set_priority_initial(lock);
+
+	lock->holder = NULL;
+	//lock->donated = false;
+	//intr_set_level (old_level);
+	//lock->before_donations = -1;
+	//thread_set_priority_initial();
+	sema_up (&lock->semaphore);
+	//thread_set_priority(31);
 }
 
 /* Returns true if the current thread holds LOCK, false
@@ -491,4 +504,15 @@ bool cond_list_less (const struct list_elem *a,
 								 struct list l1 = list_entry (a, struct semaphore_elem, elem)->semaphore.waiters, l2 = list_entry (b, struct semaphore_elem, elem)->semaphore.waiters;
 								 //printf("%d comp with %d \n", list_entry (list_front(&l1), struct thread, elem)->priority, list_entry (list_front(&l2), struct thread, elem)->priority);
 								 return list_entry (list_front(&l1), struct thread, elem)->priority > list_entry (list_front(&l2), struct thread, elem)->priority;								 
+								 }
+								 
+								 /* Cond list less function */
+
+bool priority_list_less (const struct list_elem *a,
+                             const struct list_elem *b,
+                             void *aux UNUSED) {
+								 //struct list l1 = list_entry (a, struct semaphore_elem, elem)->semaphore.waiters, l2 = list_entry (b, struct semaphore_elem, elem)->semaphore.waiters;
+								 //return list_entry (list_front(&l1), struct thread, elem)->priority > list_entry (list_front(&l2), struct thread, elem)->priority;
+								 
+								 return list_entry (a, struct priority_values, pelem)->l == list_entry (b, struct priority_values, pelem)->l;
 								 }
