@@ -383,9 +383,9 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority_initial (struct lock *lock)
 {
-	enum intr_level old_level;
-	ASSERT (!intr_context ());
-	old_level = intr_disable ();
+	//enum intr_level old_level;
+	//ASSERT (!intr_context ());
+	//old_level = intr_disable ();
 	
 	struct thread *t = thread_current();
 	int p = t->priority,  i = p;
@@ -414,7 +414,7 @@ thread_set_priority_initial (struct lock *lock)
 			// thread_yield();
 		}
 	}
-	intr_set_level (old_level);
+	//intr_set_level (old_level);
 }
 
 /* Sets the current thread's priority by donation. */
@@ -445,6 +445,14 @@ thread_set_priority (int new_priority)
 
   old_level = intr_disable ();
   struct thread *t = thread_current();
+  
+	if( !list_empty(&t->priority_list) ) {
+		struct list_elem *e;
+		for (e = list_begin (&t->priority_list); e != list_end (&t->priority_list); e = list_next (e))
+			list_entry (e, struct priority_values, pelem)->value = new_priority;
+		return;
+	}
+  
   //if ( t->priority != t->initial_priority ) {
 	  //t->initial_priority = new_priority;
 	  t->priority = new_priority;
