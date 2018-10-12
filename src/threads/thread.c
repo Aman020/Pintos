@@ -194,9 +194,8 @@
 	    return TID_ERROR;
 	
 	  /* Initialize thread. */
-	  //printf("i = %d\n", priority);
-	  //t->initial_priority = priority;
-	  t->donated = false;
+	  
+	  //t->donated = false;
 	  init_thread (t, name, priority);
 	  tid = t->tid = allocate_tid ();
 	
@@ -384,24 +383,41 @@
 	void
 	thread_set_priority_initial ()
 	{
+		enum intr_level old_level;
+			ASSERT (!intr_context ());
+			old_level = intr_disable ();
+			
 		struct thread *t = thread_current();
-		int i = t->initial_priority, p = t->priority;
-		//printf("ii = %d\n", i);
-		if( i != p && t->donated) {
-			t->donated = false;
-			thread_set_priority(i);
-		}
+		//if ( t->donated ) {
+			//printf("Donated \n");
+			//int i = t->initial_priority, p = t->priority;
+			int p = t->priority,  i = p;
+			if(!list_empty (&t->priority_list)) {
+				i = list_entry (list_pop_front (&t->priority_list), struct priority_values, pelem)->value;
+				//printf("ii = %d\n", i);
+			}
+			if( i != p ) {
+				struct thread *t = thread_current();
+				t->priority = i;
+				if ( !list_empty(&ready_list) && list_entry (list_front(&ready_list ), struct thread, elem)->priority > i ) {
+					thread_yield();
+				}	
+				//thread_set_priority(i);
+			}
+			//t->donated = false;
+		//}
+		intr_set_level (old_level);
 	}
 	
 	/* Sets the current thread's priority by donation. */
 	void
 	thread_set_priority_donation (int donation_priority)
 	{
-		struct thread *t = thread_current();
+		//struct thread *t = thread_current();
 		int p = thread_get_priority();
 		//printf("%d\n", i);
 		if( p != donation_priority ) {
-			t->initial_priority = p;
+			//t->initial_priority = p;
 			thread_set_priority(donation_priority);
 		}
 			
@@ -572,6 +588,8 @@
 	  t->magic = THREAD_MAGIC;
 	
 	  old_level = intr_disable ();
+//	  t->donated = false;
+	  list_init(&t->priority_list);
 	  list_push_back (&all_list, &t->allelem);
 	  intr_set_level (old_level);
 		//printf("Thread init is called with magic no. = %d And not list size is : %d \n", t->magic, list_size(&all_list));

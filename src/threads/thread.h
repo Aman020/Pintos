@@ -90,9 +90,12 @@ struct thread
     enum thread_status status;          /* Thread state. */
     char name[16];                      /* Name (for debugging purposes). */
     uint8_t *stack;                     /* Saved stack pointer. */
+    
+    struct list priority_list;			/* Priority list of multiple donations */
     int priority;                       /* Priority. */
-    int initial_priority;               /* initial_priority. */
+    //int initial_priority;               /* initial_priority. */
     bool donated;						/* To check if donated. */
+    
     struct list_elem allelem;           /* List element for all threads list. */
 	int nice; 			/* Nice */
 
@@ -108,6 +111,13 @@ struct thread
     unsigned magic;                     /* Detects stack overflow. */
     
     int64_t sleeping_ticks;				/* For timer_sleep */
+  };
+
+/* A counting semaphore. */
+struct priority_values
+  {
+    int value;						/* Current value. */
+    struct list_elem pelem;			/* List of waiting threads. */
   };
 
 /* If false (default), use round-robin scheduler.

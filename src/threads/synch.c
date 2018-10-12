@@ -240,7 +240,9 @@ lock_init (struct lock *lock)
   ASSERT (lock != NULL);
 
   lock->holder = NULL;
+  //lock->before_donations = -1;
   sema_init (&lock->semaphore, 1);
+  lock->donated = false;
 }
 
 /* Acquires LOCK, sleeping until it becomes available if
@@ -276,10 +278,18 @@ lock_acquire (struct lock *lock)
 		//}
 		//lock->holder->initial_priority = lock->holder->priority;
 		//struct thread *t = lock->holder;
+		struct priority_values pv;
+		pv.value = lock->holder->priority;
+		//printf("l = %d, %d\n", pv.value, p);
 		
-		lock->holder->initial_priority = lock->holder->priority;
+		//if (lock->before_donations != -1)
+		//lock->before_donations = lock->holder->priority;
+		//list_init(&lock->holder->priority_list);
+		//lock->holder->initial_priority = lock->holder->priority;
+		list_push_front (&lock->holder->priority_list, &pv.pelem);
+		//lock->holder->initial_priority = lock->holder->priority;
 		lock->holder->priority = p;
-		lock->holder->donated = true;
+		lock->donated = true;
 		
 		//printf("A %d %d \n", lock->holder->priority, thread_get_priority());
 		//printf("A %d \n", lock->holder==t);
@@ -288,6 +298,7 @@ lock_acquire (struct lock *lock)
 	intr_set_level (old_level);
 	
   sema_down (&lock->semaphore);
+  lock->donated = false;
   lock->holder = thread_current ();
 }
 
@@ -323,8 +334,21 @@ lock_release (struct lock *lock)
   ASSERT (lock_held_by_current_thread (lock));
 
   lock->holder = NULL;
+  
+  //printf(" t = %d", thread_get_priority());
+  //enum intr_level old_level;
+  //old_level = intr_disable ();
+  //if(lock->before_donations != -1)
+	//thread_set_priority_initial(lock->before_donations);
+	
+  if(lock->donated)
+    thread_set_priority_initial();
+    
+  //lock->donated = false;
+  //intr_set_level (old_level);
+  //lock->before_donations = -1;
+  //thread_set_priority_initial();
   sema_up (&lock->semaphore);
-  thread_set_priority_initial();
   //thread_set_priority(31);
 }
 

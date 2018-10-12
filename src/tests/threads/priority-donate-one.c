@@ -39,7 +39,7 @@ test_priority_donate_one (void)
        PRI_DEFAULT + 2, thread_get_priority ());
 	//msg("Releasing lock main\n");
   lock_release (&lock);
-  	//msg("Released lock main\n");
+  	//msg("Released lock main %d\n", thread_get_priority ());
 msg ("acquire2, acquire1 must already have finished, in that order.");
   msg ("This should be the last line before finishing this test.");
 }

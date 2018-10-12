@@ -24,7 +24,9 @@ void sema_up_for_waiting (struct semaphore *);
 struct lock 
   {
     struct thread *holder;      /* Thread holding lock (for debugging). */
+    //int before_donations;				/* Before donations value */
     struct semaphore semaphore; /* Binary semaphore controlling access. */
+    bool donated;
   };
 
 void lock_init (struct lock *);

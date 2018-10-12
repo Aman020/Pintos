@@ -168,6 +168,7 @@ list_tail (struct list *list)
 void
 list_insert (struct list_elem *before, struct list_elem *elem)
 {
+	//printf("c- %d, %d \n", is_interior (before), is_tail (before));
   ASSERT (is_interior (before) || is_tail (before));
   ASSERT (elem != NULL);
 
