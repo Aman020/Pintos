@@ -78,6 +78,8 @@ static tid_t allocate_tid (void);
 
 static list_less_func ready_list_less;
 
+static list_less_func priority_list_less;
+
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
    general and it is possible in this case only because loader.S
@@ -399,36 +401,16 @@ thread_set_priority_initial (struct lock *lock)
 				list_remove(e);
 			}
 		}
-		//printf("i1 - %d\n", i);
+
 		if ( !list_empty (&t->priority_list) ) {
 			e = list_max(&t->priority_list, priority_list_less, NULL);
 			i = list_entry (e, struct priority_values, pelem)->set;
 		}
-		//printf("i - %d\n", i);
 	}
 	if( i != p ) {
-		struct thread *t = thread_current();
-		t->priority = i;
-		if ( !list_empty(&ready_list) && list_entry (list_front(&ready_list ), struct thread, elem)->priority > i ) {
-			//printf("Y %d %d\n",i, list_entry (list_front(&ready_list ), struct thread, elem)->priority);
-			// thread_yield();
-		}
+		thread_current()->priority = i;
 	}
 	//intr_set_level (old_level);
-}
-
-/* Sets the current thread's priority by donation. */
-void
-thread_set_priority_donation (int donation_priority)
-{
-	//struct thread *t = thread_current();
-	int p = thread_get_priority();
-	//printf("%d\n", i);
-	if( p != donation_priority ) {
-		//t->initial_priority = p;
-		thread_set_priority(donation_priority);
-	}
-		
 }
 
 
@@ -560,7 +542,6 @@ kernel_thread (thread_func *function, void *aux)
 
   intr_enable ();       /* The scheduler runs with interrupts off. */
   function (aux);       /* Execute the thread function. */
-//	printf("Thread exit is being called from kernel_thread \n");
   thread_exit ();       /* If function() returns, kill the thread. */
 }
 
@@ -604,7 +585,6 @@ init_thread (struct thread *t, const char *name, int priority)
   t->magic = THREAD_MAGIC;
 
   old_level = intr_disable ();
-//	  t->donated = false;
   list_init(&t->priority_list);
   list_push_back (&all_list, &t->allelem);
   intr_set_level (old_level);
@@ -635,11 +615,7 @@ next_thread_to_run (void)
   if (list_empty (&ready_list)) {
 		return idle_thread;
 	}  else {
-		//printf("I");
-		//if(sort_required_ready_list) {
 		list_sort(&ready_list, ready_list_less, NULL);
-		//	sort_required_ready_list = false;
-		//}
 		return list_entry (list_pop_front (&ready_list), struct thread, elem);
 	}
 }
@@ -687,11 +663,7 @@ thread_schedule_tail (struct thread *prev)
 	{
 	  ASSERT (prev != cur);
 	  palloc_free_page (prev);
-	//printf("Inside thread_schedule_tail to free the page of thread ... \n");
 	}
-	//printf("Inside thread_schedule_tail \n");
-	//if ( flag_block )
-		//printf("T\n");
 }
 
 /* Schedules a new process.  At entry, interrupts must be off and
@@ -711,16 +683,11 @@ schedule (void)
   ASSERT (intr_get_level () == INTR_OFF);
   ASSERT (cur->status != THREAD_RUNNING);
   ASSERT (is_thread (next));
-	//printf("In schedule : %d \n", cur != next);
+
   if (cur != next)
 	prev = switch_threads (cur, next);
-//	else 
-		//printf("S");
-		//printf("The equal...!!!");
+
   thread_schedule_tail (prev);
-	//printf("s");
-	//printf("In schedule,.. the current thread tid is = %d \n", cur->tid);
-	//printf("%d", thread_current()->tid);
 }
 
 /* Returns a tid to use for a new thread. */

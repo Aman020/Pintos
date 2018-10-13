@@ -95,7 +95,7 @@ struct thread
     struct list priority_list;			/* Priority list of multiple donations */
     int priority;                       /* Priority. */
     //int initial_priority;               /* initial_priority. */
-    bool donated;						/* To check if donated. */
+    struct thread *donated;						/* To check if donated. */
     
     struct list_elem allelem;           /* List element for all threads list. */
 	int nice; 			/* Nice */
@@ -153,15 +153,11 @@ void thread_foreach (thread_action_func *, void *);
 void thread_set_priority_initial (struct lock *);
 int thread_get_priority (void);
 void thread_set_priority (int);
-void thread_set_priority_donation (int);
 	
 int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 
-
-
-static list_less_func priority_list_less;
 //bool sort_required_ready_list = false;
 #endif /* threads/thread.h */

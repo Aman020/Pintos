@@ -69,24 +69,18 @@ sema_init (struct semaphore *sema, unsigned value)
 void
 sema_down (struct semaphore *sema) 
 {
-	
- enum intr_level old_level;
+	enum intr_level old_level;
 
-  ASSERT (sema != NULL);
-  ASSERT (!intr_context ());
+	ASSERT (sema != NULL);
+	ASSERT (!intr_context ());
 
-  old_level = intr_disable ();
-  while (sema->value == 0)
-    {
+	old_level = intr_disable ();
+	while (sema->value == 0) {
 		list_insert_ordered(&sema->waiters, &thread_current ()->elem, ready_list_less, NULL);
-		//list_push_back (&sema->waiters, &thread_current ()->elem);
-      //printf("Pushed to list \n");
-      thread_block ();
-    }
-  sema->value--;
-  intr_set_level (old_level);
-  
-  	//printf("SD \n");
+		thread_block ();
+	}
+	sema->value--;
+	intr_set_level (old_level);
 }
 
 /* Down or "P" operation on a semaphore.  Waits for SEMA's value
@@ -258,62 +252,40 @@ lock_init (struct lock *lock)
 void
 lock_acquire (struct lock *lock)
 {
-  ASSERT (lock != NULL);
-  ASSERT (!intr_context ());
-  ASSERT (!lock_held_by_current_thread (lock));
+	ASSERT (lock != NULL);
+	ASSERT (!intr_context ());
+	ASSERT (!lock_held_by_current_thread (lock));
 
-	//printf(" t = %d", thread_get_priority());
 	enum intr_level old_level;
 	old_level = intr_disable ();
 		
 	int p = thread_get_priority();
 	
 	if( lock->holder != NULL && lock->holder->priority < p ) {
-		//printf("Changing the priority of holder \n");
-		//printf("b %d %d \n", lock->holder->priority, thread_get_priority());
-		//lock->holder->priority = thread_get_priority();
-		//int p = thread_get_priority();
-		//printf("%d\n", i);
-		//if( p != donation_priority ) {
-		//	t->initial_priority = p;
-		//	thread_set_priority(donation_priority);
-		//}
-		//lock->holder->initial_priority = lock->holder->priority;
-		//struct thread *t = lock->holder;
 		struct priority_values pv;
 		pv.l = lock;
 		pv.value = lock->holder->priority;
 		pv.set = p;
-		//printf("l = %d, %d\n", pv.value, p);
-		
-		//if (lock->before_donations != -1)
-		//lock->before_donations = lock->holder->priority;
-		//list_init(&lock->holder->priority_list);
-		//lock->holder->initial_priority = lock->holder->priority;
-		
-		//list_push_front (&lock->holder->priority_list, &pv.pelem);
+
 		if( !list_empty(&lock->holder->priority_list) ) {
-			//printf("------- %d\n", pv.value);
 			pv.value = list_entry (list_front(&lock->holder->priority_list), struct priority_values, pelem)->value;
-			//printf("------- %d\n", pv.value);
 		}
-			struct list_elem *e = list_insert_unique (&lock->holder->priority_list, &pv.pelem, priority_list_less, NULL);
-			if ( e != NULL ) {
-				//struct priority_values p_v = 
-				pv.value = list_entry (e, struct priority_values, pelem)->value;
-				//printf("Changing ... %d \n", pv.value);
-				list_remove (e);
-			}
-		//}
-		//list_insert_ordered(&sema->waiters, &thread_current ()->elem, waiting_list_less, NULL);
 		
-		//lock->holder->initial_priority = lock->holder->priority;
+		struct list_elem *e = list_insert_unique (&lock->holder->priority_list, &pv.pelem, priority_list_less, NULL);
+		if ( e != NULL ) {
+			pv.value = list_entry (e, struct priority_values, pelem)->value;
+			list_remove (e);
+		}
+		
 		lock->holder->priority = p;
 		lock->donated = true;
 		
-		//printf("A %d %d \n", lock->holder->priority, thread_get_priority());
-		//printf("A %d \n", lock->holder==t);
-		//sort_required_ready_list = true;
+		thread_current()->donated = lock->holder;
+		struct thread *receiver = lock->holder;
+		while( receiver != NULL ) {
+			receiver->priority = p;
+			receiver = receiver->donated;
+		}
 	}
 	intr_set_level (old_level);
 	
