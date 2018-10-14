@@ -4,6 +4,7 @@
 #include <random.h>
 #include <stdio.h>
 #include <string.h>
+#include "devices/timer.h"
 #include "threads/flags.h"
 #include "threads/interrupt.h"
 #include "threads/intr-stubs.h"
@@ -11,6 +12,7 @@
 #include "threads/switch.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
+#include "threads/fixed-point.h"
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
@@ -80,6 +82,7 @@ static list_less_func ready_list_less;
 
 static list_less_func priority_list_less;
 
+int32_t load_avg = 0;
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
    general and it is possible in this case only because loader.S
@@ -130,11 +133,14 @@ thread_start (void)
   sema_down (&idle_started);
 }
 
+int i = 0;
 /* Called by the timer interrupt handler at each timer tick.
    Thus, this function runs in an external interrupt context. */
 void
 thread_tick (void) 
 {
+	if( ++i % TIMER_FREQ == 0 )
+		load_avg = multiply( divide(inttof(59), inttof(60)), load_avg ) +	multiplyn( divide(inttof(1), inttof(60)), list_size(&ready_list) + thread_current() != idle_thread ? 1 : 0 );
 	//printf("TT \n");
   struct thread *t = thread_current ();
 
@@ -484,15 +490,14 @@ thread_get_nice (void)
   return thread_current()->nice;
 }
 
-int load_avg = 0;
 /* Returns 100 times the system load average. */
 int
 thread_get_load_avg (void) 
 {
   /* Not yet implemented. */
   //printf("");
-  load_avg = (59/60)*load_avg +	(1/60)*( list_size(&ready_list) + thread_current() != idle_thread ? 1 : 0 );
-  return 100 * load_avg;
+  //load_avg = multiply( divide(inttof(59), inttof(60)), load_avg ) +	multiplyn( divide(inttof(1), inttof(60)), list_size(&ready_list) + thread_current() != idle_thread ? 1 : 0 );
+  return ftoint( multiplyn(load_avg, 100) );
 }
 
 /* Returns 100 times the current thread's recent_cpu value. */
@@ -736,3 +741,46 @@ bool priority_list_less (const struct list_elem *a,
 								return list_entry (a, struct priority_values, pelem)->set > list_entry (b, struct priority_values, pelem)->set;
 								}
 
+int ftoint(int32_t x) {
+	if( x > 0 )
+		x += f / 2;
+	else
+		x -= f / 2;
+	return x / f;
+}
+
+int32_t inttof(int n) {
+	return n * f;
+}
+
+int32_t divide(int32_t x, int32_t y) {
+	return ((int64_t) x) * f / y;
+}
+
+int32_t multiply(int32_t x, int32_t y) {
+	return ((int64_t) x) * y / f;
+}
+
+int32_t add(int32_t x, int32_t y) {
+	return x + y;
+}
+
+int32_t sub(int32_t x, int32_t y) {
+	return x - y;
+}
+
+int32_t dividen(int32_t x, int n) {
+	return x / n;
+}
+
+int32_t multiplyn(int32_t x, int n) {
+	return x * n;
+}
+
+int addn(int32_t x, int n) {
+	return x + n * f;
+}
+
+int subn(int32_t x, int n) {
+	return x - n * f;
+}

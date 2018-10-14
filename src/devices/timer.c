@@ -225,6 +225,8 @@ timer_interrupt (struct intr_frame *args UNUSED)
 {
 	//printf("%d", thread_current()->tid);
   ticks++;
+  //if( ticks % TIMER_FREQ == 0 )
+	
   thread_tick ();
   
   while( !list_empty(&waiting_list.waiters) && list_entry (list_front(&waiting_list.waiters ), struct thread, elem)->sleeping_ticks <= timer_ticks() ) {
@@ -279,7 +281,7 @@ real_time_sleep (int64_t num, int32_t denom)
      ---------------------- = NUM * TIMER_FREQ / DENOM ticks. 
      1 s / TIMER_FREQ ticks
   */
-	printf(" In real_time_sleep %lld \n", (long long )(num / denom ) );
+	//printf(" In real_time_sleep %lld \n", (long long )(num / denom ) );
   int64_t ticks = num * TIMER_FREQ / denom;
 
   ASSERT (intr_get_level () == INTR_ON);
