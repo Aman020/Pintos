@@ -94,7 +94,7 @@ struct thread
     
     struct list priority_list;			/* Priority list of multiple donations */
     int priority;                       /* Priority. */
-    //int initial_priority;               /* initial_priority. */
+    int initial_priority;               /* initial_priority. */
     struct thread *donated;						/* To check if donated. */
     
     struct list_elem allelem;           /* List element for all threads list. */
@@ -116,7 +116,7 @@ struct thread
 
 /* A counting semaphore. */
 struct priority_values {
-	int value;						/* Current value. */
+	//int value;						/* Current value. */
 	int set;						/* Current value. */
 	struct lock *l;					/* Corresponding lock. */
 	struct list_elem pelem;			/* List of waiting threads. */

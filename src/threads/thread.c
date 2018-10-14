@@ -390,21 +390,24 @@ thread_set_priority_initial (struct lock *lock)
 	//old_level = intr_disable ();
 	
 	struct thread *t = thread_current();
-	int p = t->priority,  i = p;
+	int p = t->priority,  i = t->initial_priority;
 	if(!list_empty (&t->priority_list)) {
 		struct list_elem *e;
 		struct priority_values *p;
 		for ( e = list_begin (&t->priority_list); e != list_end (&t->priority_list); e = list_next (e) ) {
 			p = list_entry (e, struct priority_values, pelem);
 			if ( p->l == lock) {
-				i = p->value;
+				//i = p->value;
 				list_remove(e);
 			}
 		}
-
+		
 		if ( !list_empty (&t->priority_list) ) {
 			e = list_max(&t->priority_list, priority_list_less, NULL);
 			i = list_entry (e, struct priority_values, pelem)->set;
+		}
+		else {
+			t->initial_priority = -1;
 		}
 	}
 	if( i != p ) {
@@ -428,10 +431,12 @@ thread_set_priority (int new_priority)
   old_level = intr_disable ();
   struct thread *t = thread_current();
   
+  
 	if( !list_empty(&t->priority_list) ) {
-		struct list_elem *e;
-		for (e = list_begin (&t->priority_list); e != list_end (&t->priority_list); e = list_next (e))
-			list_entry (e, struct priority_values, pelem)->value = new_priority;
+		t->initial_priority = new_priority;
+	//	struct list_elem *e;
+	//	for (e = list_begin (&t->priority_list); e != list_end (&t->priority_list); e = list_next (e))
+	//		list_entry (e, struct priority_values, pelem)->value = new_priority;
 		return;
 	}
   
@@ -479,12 +484,15 @@ thread_get_nice (void)
   return thread_current()->nice;
 }
 
+int load_avg = 0;
 /* Returns 100 times the system load average. */
 int
 thread_get_load_avg (void) 
 {
   /* Not yet implemented. */
-  return 0;
+  //printf("");
+  load_avg = (59/60)*load_avg +	(1/60)*( list_size(&ready_list) + thread_current() != idle_thread ? 1 : 0 );
+  return 100 * load_avg;
 }
 
 /* Returns 100 times the current thread's recent_cpu value. */
@@ -585,6 +593,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->magic = THREAD_MAGIC;
 
   old_level = intr_disable ();
+  t->initial_priority = -1;
   list_init(&t->priority_list);
   list_push_back (&all_list, &t->allelem);
   intr_set_level (old_level);

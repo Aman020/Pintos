@@ -264,16 +264,18 @@ lock_acquire (struct lock *lock)
 	if( lock->holder != NULL && lock->holder->priority < p ) {
 		struct priority_values pv;
 		pv.l = lock;
-		pv.value = lock->holder->priority;
+		//pv.value = lock->holder->priority;
+		if( lock->holder->initial_priority == -1 )
+			lock->holder->initial_priority = lock->holder->priority;
 		pv.set = p;
 
-		if( !list_empty(&lock->holder->priority_list) ) {
-			pv.value = list_entry (list_front(&lock->holder->priority_list), struct priority_values, pelem)->value;
-		}
+		//if( !list_empty(&lock->holder->priority_list) ) {
+		//	pv.value = list_entry (list_front(&lock->holder->priority_list), struct priority_values, pelem)->value;
+		//}
 		
 		struct list_elem *e = list_insert_unique (&lock->holder->priority_list, &pv.pelem, priority_list_less, NULL);
 		if ( e != NULL ) {
-			pv.value = list_entry (e, struct priority_values, pelem)->value;
+			//pv.value = list_entry (e, struct priority_values, pelem)->value;
 			list_remove (e);
 		}
 		
