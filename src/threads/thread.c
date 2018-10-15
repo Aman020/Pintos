@@ -763,8 +763,8 @@ void priority_update (struct thread *t, void *aux UNUSED) {
 	enum intr_level old_level;
 	old_level = intr_disable ();
 	//recent_cpu_update(t, NULL);
-	//t->priority = PRI_MAX - ftoint( (inttof(t->recent_cpu) / 4 ) - (inttof(t->nice) * 2) );
-	t->priority = PRI_DEFAULT;
+	t->priority = PRI_MAX - ftoint( t->recent_cpu / 4 + inttof(t->nice * 2) );
+	//t->priority = PRI_DEFAULT;
 	
 	intr_set_level (old_level);
 }
