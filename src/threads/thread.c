@@ -150,7 +150,7 @@ void
 thread_tick (void) 
 {
 	if(thread_mlfqs) {
-		thread_current()->recent_cpu = add(thread_current()->recent_cpu, inttof(1) );
+		thread_current()->recent_cpu = addn(thread_current()->recent_cpu, 1 );
 		
 		if( timer_ticks() % TIMER_FREQ == 0) {
 			temp = list_size(&ready_list);
@@ -231,6 +231,7 @@ thread_create (const char *name, int priority,
   
   //t->donated = false;
   init_thread (t, name, priority);
+  t->recent_cpu = thread_get_recent_cpu();
   tid = t->tid = allocate_tid ();
 
 	//printf("Thread create is called for %d \n", count++);
@@ -314,7 +315,7 @@ thread_unblock (struct thread *t)
   //schedule ();
   
 	//if ( !thread_mlfqs && thread_current() != idle_thread && t->priority > thread_current()->priority )
-	if ( thread_current() != idle_thread && t->priority >= thread_current()->priority )
+	if ( !intr_context() && thread_current() != idle_thread && t->priority >= thread_current()->priority )
 		thread_yield();
 	//if ( thread_mlfqs && thread_current() != idle_thread && t->priority >= thread_current()->priority )
 	//	thread_yield();
@@ -382,8 +383,8 @@ thread_exit (void)
 void
 thread_yield (void) 
 {
-	if( intr_context ())
-		return;
+//	if( intr_context ())
+//		return;
   struct thread *cur = thread_current ();
   enum intr_level old_level;
 	//printf("In thread yeild %s\n", cur->name);
@@ -775,8 +776,10 @@ void recent_cpu_update (struct thread *t, void *aux UNUSED) {
 	old_level = intr_disable ();
 	
 	//t->priority = PRI_MAX - ftoint( (inttof(t->recent_cpu) / 4 ) - (inttof(t->nice) * 2) );
-	t->recent_cpu = addn( multiply( divide( 2 * inttof( load_avg ),  addn(2 * inttof ( load_avg ), 1) ), t->recent_cpu ), thread_get_nice() );
-	
+	//printf("b : %d %d \n", ftoint(load_avg * 100), ftoint(t->recent_cpu * 100) );
+	t->recent_cpu = addn( multiply( divide( 2 * load_avg,  addn( 2 * load_avg, 1) ), t->recent_cpu ), t->nice );
+	//t->recent_cpu = divide( 2 * load_avg,  addn( 2 * load_avg, 1) );//addn( multiply( divide( inttof( 2 * load_avg ),  addn( inttof( 2 * load_avg ), 1) ), t->recent_cpu ), t->nice );
+	//printf("A : %d %d \n", ftoint(load_avg * 100), ftoint(t->recent_cpu * 100) );
 	intr_set_level (old_level);
 }
 
@@ -816,10 +819,10 @@ int32_t multiplyn(int32_t x, int n) {
 	return x * n;
 }
 
-int addn(int32_t x, int n) {
+int32_t addn(int32_t x, int n) {
 	return x + n * f;
 }
 
-int subn(int32_t x, int n) {
+int32_t subn(int32_t x, int n) {
 	return x - n * f;
 }

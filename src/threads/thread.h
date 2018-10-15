@@ -112,7 +112,7 @@ struct thread
     unsigned magic;                     /* Detects stack overflow. */
     
     int64_t sleeping_ticks;				/* For timer_sleep */
-    int recent_cpu;
+    int32_t recent_cpu;
   };
 
 /* A counting semaphore. */

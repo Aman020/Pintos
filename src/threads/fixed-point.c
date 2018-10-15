@@ -36,7 +36,7 @@ int32_t multiplyn(int32_t x, int n) {
 	return x * n;
 }
 
-int addn(int32_t x, int n) {
+int32_t addn(int32_t x, int n) {
 	return x + n * f;
 }
 
