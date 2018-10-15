@@ -33,6 +33,7 @@ static struct list ready_list;
 /* List of all processes.  Processes are added to this list
    when they are first scheduled and removed when they exit. */
 static struct list all_list;
+int count = 0;
 
 /* Idle thread. */
 static struct thread *idle_thread;
@@ -82,7 +83,10 @@ static list_less_func ready_list_less;
 
 static list_less_func priority_list_less;
 
-int32_t load_avg = 0;
+static thread_action_func priority_update;
+
+static int load_avg = 0;
+//static int recent_cpu = 0;
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
    general and it is possible in this case only because loader.S
@@ -106,10 +110,13 @@ thread_init (void)
   list_init (&all_list);
   //list_init (&waiting_list);
 
+	load_avg = 0;
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
   init_thread (initial_thread, "main", PRI_DEFAULT);
   initial_thread->status = THREAD_RUNNING;
+  //if( thread_mlfqs )
+	//init_thread->priority = PRI_MAX - ftoint( (inttof(init_thread->recent_cpu) / 4 ) - (inttof(init_thread->nice) * 2) );
   initial_thread->tid = allocate_tid ();
 	//printf("Initial thread with tid = %d \n", initial_thread->tid);
 }
@@ -133,14 +140,53 @@ thread_start (void)
   sema_down (&idle_started);
 }
 
-int i = 0;
+bool first = true;
+int temp = 0;
 /* Called by the timer interrupt handler at each timer tick.
    Thus, this function runs in an external interrupt context. */
 void
 thread_tick (void) 
 {
-	if( ++i % TIMER_FREQ == 0 )
-		load_avg = multiply( divide(inttof(59), inttof(60)), load_avg ) +	multiplyn( divide(inttof(1), inttof(60)), list_size(&ready_list) + thread_current() != idle_thread ? 1 : 0 );
+	if(thread_mlfqs) {
+		thread_current()->recent_cpu = add(thread_current()->recent_cpu, inttof(1) );
+		
+		if( timer_ticks() % TIMER_FREQ == 0) {
+			temp = list_size(&ready_list);
+			//temp = count;
+			if(thread_current() != idle_thread)
+				temp += 1;
+			//load_avg = multiply( inttof(59)/ 60, load_avg ) + inttof(1) / 60 * temp;
+			load_avg = multiply( load_avg, divide(inttof(59), inttof(60)) ) + multiplyn( divide(inttof(1), inttof(60)), temp);
+			
+			//thread_current()->recent_cpu = ftoint( addn( divide( 2 * inttof( load_avg ),  addn(2 * inttof ( load_avg ), 1) ) * thread_current()->recent_cpu, thread_get_nice()) );
+			thread_current()->recent_cpu = addn( multiply( divide( 2 * inttof( load_avg ),  addn(2 * inttof ( load_avg ), 1) ), thread_current()->recent_cpu ), thread_get_nice() );
+			//printf("-size= %d -\n", thread_current()->recent_cpu);
+
+			
+			//load_avg = multiply( divide(inttof(59), inttof(60)), load_avg ) + multiplyn( divide(inttof(1), inttof(60)), count - 1);
+			//if(thread_mlfqs) {
+			//	if(thread_current() != idle_thread && first) {
+			//		first = false;
+			//	}
+			//	else
+			//		load_avg = multiply( divide(inttof(59), inttof(60)), load_avg ) + multiplyn( divide(inttof(1), inttof(60)), thread_current() != idle_thread ? count - 1 : 0);
+			//}
+			//load_avg = multiply( divide(inttof(59), inttof(60)), load_avg ) + multiplyn( divide(inttof(1), inttof(60)), thread_current() != idle_thread ? count - 1 : 0);
+			//if ( thread_current() != idle_thread )
+				//load_avg = multiply( divide(inttof(59), inttof(60)), load_avg ) +	multiplyn( divide(inttof(1), inttof(60)), count - 1);
+			//printf("i = %d , %d - %d \n", i, count, ftoint( multiplyn(load_avg, 100) ) );
+			//load_avg = multiply( divide(inttof(59), inttof(60)), load_avg ) +	multiplyn( divide(inttof(1), inttof(60)), list_size(&ready_list) + thread_current() != idle_thread ? 1 : 0 );
+		}
+		
+		if( timer_ticks() % 4 == 3 ) {
+			//priority = PRI_MAX - (recent_cpu / 4) - (nice * 2)
+			//printf("1 - ");
+			thread_foreach( priority_update, NULL);
+			//list_sort(&ready_list, ready_list_less, NULL);
+		}
+	}
+		//load_avg = multiply( inttof(59/ 60), load_avg ) +	multiplyn( inttof(1 / 60), list_size(&ready_list) + thread_current() != idle_thread ? 1 : 0 );
+		//load_avg = multiply( divide(inttof(59), inttof(60)), load_avg ) +	multiplyn( divide(inttof(1), inttof(60)), list_size(&ready_list) + thread_current() != idle_thread ? 1 : 0 );
 	//printf("TT \n");
   struct thread *t = thread_current ();
 
@@ -223,6 +269,9 @@ thread_create (const char *name, int priority,
   sf->eip = switch_entry;
   sf->ebp = 0;
 
+	//if( thread_mlfqs )
+	//	t->priority = PRI_MAX - ftoint( (inttof(t->recent_cpu) / 4 ) - (inttof(t->nice) * 2) );
+	
   /* Add to run queue. */
   thread_unblock (t);
   
@@ -252,6 +301,9 @@ thread_block (void)
   ASSERT (intr_get_level () == INTR_OFF);
 
 	//printf("%d", thread_current()->tid );
+  if( thread_current() != idle_thread)
+	count--;
+  
   thread_current ()->status = THREAD_BLOCKED;
   schedule ();
   //printf("Thread block .... \n");
@@ -281,9 +333,11 @@ thread_unblock (struct thread *t)
   t->status = THREAD_READY;
   //schedule ();
   
-  if ( thread_current() != idle_thread && list_entry (list_front(&ready_list ), struct thread, elem)->priority > thread_current()->priority )
-  //if ( thread_current() != idle_thread && t->priority > thread_current()->priority )
-	thread_yield();
+  //if ( thread_current() != idle_thread && list_entry (list_front(&ready_list ), struct thread, elem)->priority > thread_current()->priority )
+  //if ( t != idle_thread && t->priority > thread_current()->priority )
+	//thread_yield();
+  //if( t != idle_thread )
+	//	count++;
   intr_set_level (old_level);
   //thread_yield();
   //thread_yield();
@@ -495,9 +549,9 @@ int
 thread_get_load_avg (void) 
 {
   /* Not yet implemented. */
-  //printf("");
+  //printf("%d , ", ftoint( multiplyn(load_avg, 100) ));
   //load_avg = multiply( divide(inttof(59), inttof(60)), load_avg ) +	multiplyn( divide(inttof(1), inttof(60)), list_size(&ready_list) + thread_current() != idle_thread ? 1 : 0 );
-  return ftoint( multiplyn(load_avg, 100) );
+  return ftoint(load_avg * 100);
 }
 
 /* Returns 100 times the current thread's recent_cpu value. */
@@ -505,7 +559,7 @@ int
 thread_get_recent_cpu (void) 
 {
   /* Not yet implemented. */
-  return 0;
+  return ftoint(thread_current()->recent_cpu * 100);
 }
 
 /* Idle thread.  Executes when no other thread is ready to run.
@@ -599,8 +653,12 @@ init_thread (struct thread *t, const char *name, int priority)
 
   old_level = intr_disable ();
   t->initial_priority = -1;
+  t->recent_cpu = 0;
+  //t->nice = 20;
+  
   list_init(&t->priority_list);
   list_push_back (&all_list, &t->allelem);
+  count++;
   intr_set_level (old_level);
 	//printf("Thread init is called with magic no. = %d And not list size is : %d \n", t->magic, list_size(&all_list));
 }
@@ -675,6 +733,7 @@ thread_schedule_tail (struct thread *prev)
 	 palloc().) */
   if (prev != NULL && prev->status == THREAD_DYING && prev != initial_thread) 
 	{
+		count--;
 	  ASSERT (prev != cur);
 	  palloc_free_page (prev);
 	}
@@ -741,8 +800,28 @@ bool priority_list_less (const struct list_elem *a,
 								return list_entry (a, struct priority_values, pelem)->set > list_entry (b, struct priority_values, pelem)->set;
 								}
 
+void priority_update (struct thread *t, void *aux UNUSED) {
+	//PRI_MAX	- (recent_cpu /	4)	- (nice	*	2)
+	if( t->status == THREAD_DYING )
+		return;
+	int new_priority = PRI_MAX - ftoint( (inttof(t->recent_cpu) / 4 ) - (inttof(t->nice) * 2) );
+	enum intr_level old_level;
+	old_level = intr_disable ();
+	//if( !list_empty(&t->priority_list) ) {
+	//	t->initial_priority = new_priority;
+	//	return;
+	//}
+
+	t->priority = new_priority;
+	
+	//if ( !list_empty(&ready_list) && list_entry (list_front(&ready_list ), struct thread, elem)->priority > new_priority ) {
+	//	thread_yield();
+	//}
+	intr_set_level (old_level);
+}
+
 int ftoint(int32_t x) {
-	if( x > 0 )
+	if( x >= 0 )
 		x += f / 2;
 	else
 		x -= f / 2;

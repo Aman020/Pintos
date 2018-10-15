@@ -3,7 +3,7 @@
 
 #include <stdio.h>
 
-int32_t f = 16384;
+int32_t f = 1 << 14;
 
 int ftoint(int32_t x);
 
