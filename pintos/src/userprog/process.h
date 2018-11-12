@@ -12,7 +12,7 @@ void process_activate (void);
 /* A argv array. */
 struct argv_array {
 	void *addrs;						/* Addrs of the argument */
-	struct list_elem arrelem;			/* List of waiting threads. */
+	struct list_elem arrelem;			/* List to store argv addresses. */
 };
 
 #endif /* userprog/process.h */

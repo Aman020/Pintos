@@ -138,7 +138,7 @@ check_file_handle (int fd,
       compare_bytes (block, buf + ofs, block_size, ofs, file_name);
       ofs += block_size;
     }
-
+//	msg("Checking file size");
   /* Now fail due to wrong file size. */
   if (file_size != size)
     fail ("size of %s (%zu) differs from expected (%zu)",
