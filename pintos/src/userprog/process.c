@@ -20,6 +20,7 @@
 #include "threads/synch.h"
 #include "threads/vaddr.h"
 #include "threads/malloc.h"
+#include "userprog/syscall.h"
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
@@ -34,6 +35,7 @@ process_execute (const char *file_name)
 {
 	sema_init(&s, 0);
 
+	
   char *fn_copy, *fn_copy2;
   tid_t tid;
 
@@ -55,7 +57,9 @@ process_execute (const char *file_name)
 	token = strtok_r (fn_copy2, " ", &save_ptr);
 	//token = strtok_r (fn_copy2, " ", &save_ptr);
 	
+	sys_deny_write(token);
 	//printf("exe -: %s\n", token);
+	
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (token, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR) {
@@ -141,6 +145,10 @@ process_exit (void)
       pagedir_destroy (pd);
     }
     sema_up(&s);
+    //file_allow_write();
+    
+    sys_allow_write(cur->name);
+	
 }
 
 /* Sets up the CPU for running user code in the current

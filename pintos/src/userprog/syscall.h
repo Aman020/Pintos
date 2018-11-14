@@ -9,11 +9,17 @@ bool create (const char * file , unsigned initial_size);
 int open(const char* file);
 int read(int fd, void* buffer, unsigned size);
 int filesize(int fd);
+tid_t exec (const char * cmd_line );
+int wait (tid_t pid );
+
+void sys_deny_write(char *);
+void sys_allow_write(char *);
 
 /* File descriptor and struct file */
 struct file_descriptor {
 	int fd;								/* File descriptor */
-	struct file * file;						/* corresponding struct file pointer */
+	struct file * file;					/* corresponding struct file pointer */
+	const char* name;					/* File name */
 	struct list_elem felem;				/* List to store the structure. */
 };
 

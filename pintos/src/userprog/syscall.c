@@ -7,8 +7,10 @@
 #include "filesys/filesys.h"
 #include "filesys/file.h"
 #include "threads/malloc.h"
+#include "userprog/process.h"
 
 static void syscall_handler (struct intr_frame *);
+
 static struct list file_list;
 
 void
@@ -43,6 +45,12 @@ syscall_handler (struct intr_frame *f UNUSED)
 		case SYS_FILESIZE:
 						f->eax = filesize( *((int*)f->esp + 1) );
 						break;
+		//case SYS_EXEC:
+		//				f->eax = exec( (char * ) ( *((int*)f->esp + 1) ) );
+		//				break;
+		//case SYS_WAIT:
+		//				f->eax = wait( (tid_t ) ( *((int*)f->esp + 1) ) );
+		//				break;
 		default:
 			break;
 			//printf("default : %d \n", sys_code);
@@ -82,10 +90,24 @@ bool create (const char * file , unsigned initial_size UNUSED) {
 int open(const char* file) {
 	//return filesys_open(file);
 	//struct file * file = filesys_open (file);
+	
+	/*
+	struct list_elem *e;
+	for (e = list_begin (&file_list); e != list_end (&file_list);	e = list_next (e)) {
+		struct file_descriptor *f = list_entry (e, struct file_descriptor, felem);
+		if(f->name == file) {
+			printf("r - %d -- SHIVRAJ \n", f->fd);
+			return f->fd;
+		}
+	}
+	*/
+	
 	struct file_descriptor *file_d = (struct file_descriptor *)malloc( sizeof(struct file_descriptor) );
 	file_d->fd = list_size(&file_list) + 2;
 	file_d->file = filesys_open (file);
-	//printf("%s, %d", file, file_d->fd);
+	file_d->name = file;
+	//if( file_d->file != NULL)
+		//printf("%s, %d", file, file_d->fd);
 	//list_insert (struct list_elem *, struct list_elem *);
 	list_push_front (&file_list, &file_d->felem);
 	return file_d->fd;
@@ -115,6 +137,16 @@ int filesize(int fd) {
 	return 0;
 }
 
+int wait (tid_t pid ) {
+	return process_wait(pid);
+}
+
+tid_t exec (const char * cmd_line ) {
+	//return execv(cmd_line);
+	printf("%s\n", cmd_line);
+	return process_execute(cmd_line);
+}
+
 int write (int fd , const void * buffer , unsigned size ) {
 	if ( fd == STDOUT_FILENO ) {
 		//printf("Need to write to console %s\n", (char *)buffer);
@@ -130,5 +162,26 @@ int write (int fd , const void * buffer , unsigned size ) {
 		}
 	}
 	return 0;
+}
+
+
+void sys_deny_write(char *token)  {
 	
+	struct file_descriptor *file_d = (struct file_descriptor *)malloc( sizeof(struct file_descriptor) );
+	file_d->fd = list_size(&file_list) + 2;
+	file_d->file = filesys_open (token);
+	file_d->name = token;
+	
+	file_deny_write(file_d->file);
+}
+
+void sys_allow_write(char *name) {
+	struct list_elem *e;
+	for (e = list_begin (&file_list); e != list_end (&file_list);	e = list_next (e)) {
+		struct file_descriptor *f = list_entry (e, struct file_descriptor, felem);
+		if(f->name == name) {
+			//printf("r - %d\n", fd);
+			file_allow_write (f->file);
+		}
+	}
 }
