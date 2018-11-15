@@ -24,7 +24,13 @@
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
-static struct semaphore s;
+static struct list tid_list;
+//static struct semaphore s;
+
+void process_init() {
+	list_init(&tid_list);
+	//sema_init(&s, 0);
+}
 
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
@@ -33,7 +39,7 @@ static struct semaphore s;
 tid_t
 process_execute (const char *file_name) 
 {
-	sema_init(&s, 0);
+	//sema_init(&s, 0);
 
 	
   char *fn_copy, *fn_copy2;
@@ -114,7 +120,27 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid UNUSED) 
 {
-	sema_down(&s);
+	
+	struct list_elem *e;
+	//printf("Calling wait \n");
+	
+	for (e = list_begin (&tid_list); e != list_end (&tid_list);	e = list_next (e)) {
+		struct waiting_tid *wtid = list_entry (e, struct waiting_tid, tidelem);
+		if(wtid->tid == child_tid) {
+			//printf("r - %d -- SHIVRAJ \n", f->fd);
+			sema_down(&wtid->s);
+			return -1;
+		}
+	}
+	//printf("Creating element %d \n");
+	struct waiting_tid *wtid = (struct waiting_tid *)malloc( sizeof(struct waiting_tid) );
+	wtid->tid = child_tid;
+	sema_init(&wtid->s, 0);
+	list_push_front (&tid_list, &wtid->tidelem);
+	sema_down(&wtid->s);
+	
+	
+	//sema_down(&s);
 	//while(true) {
 	//	thread_yield();
 	//}
@@ -144,7 +170,16 @@ process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
-    sema_up(&s);
+    //sema_up(&s);
+    
+    struct list_elem *e;
+	for (e = list_begin (&tid_list); e != list_end (&tid_list);	e = list_next (e)) {
+		struct waiting_tid *wtid = list_entry (e, struct waiting_tid, tidelem);
+		if(wtid->tid == thread_current()->tid ) {
+			//printf("r - %d -- SHIVRAJ \n", f->fd);
+			sema_up(&wtid->s);
+		}
+	}
     //file_allow_write();
     
     sys_allow_write(cur->name);

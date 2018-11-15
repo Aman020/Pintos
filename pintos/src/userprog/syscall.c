@@ -45,12 +45,12 @@ syscall_handler (struct intr_frame *f UNUSED)
 		case SYS_FILESIZE:
 						f->eax = filesize( *((int*)f->esp + 1) );
 						break;
-		//case SYS_EXEC:
-		//				f->eax = exec( (char * ) ( *((int*)f->esp + 1) ) );
-		//				break;
-		//case SYS_WAIT:
-		//				f->eax = wait( (tid_t ) ( *((int*)f->esp + 1) ) );
-		//				break;
+		case SYS_EXEC:
+						f->eax = exec( (char * ) ( *((int*)f->esp + 1) ) );
+						break;
+		case SYS_WAIT:
+						f->eax = wait( (tid_t ) ( *((int*)f->esp + 1) ) );
+						break;
 		default:
 			break;
 			//printf("default : %d \n", sys_code);
@@ -69,6 +69,7 @@ void exit(int status) {
 	//if ( status != 0 )
 	//	status = -1;
 	printf("%s: exit(%d)\n", thread_current()->name, status);
+	process_exit();
 	thread_exit();
 }
 
@@ -83,6 +84,8 @@ bool create (const char * file , unsigned initial_size UNUSED) {
 	*/
 	//bool success = filesys_create(file, initial_size);
 	//open(file);
+	if ( file == NULL )
+		return -1;
 	return filesys_create(file, initial_size);
 }
 
@@ -143,7 +146,7 @@ int wait (tid_t pid ) {
 
 tid_t exec (const char * cmd_line ) {
 	//return execv(cmd_line);
-	printf("%s\n", cmd_line);
+	//printf("%s\n", cmd_line);
 	return process_execute(cmd_line);
 }
 
