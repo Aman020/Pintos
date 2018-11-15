@@ -8,7 +8,7 @@
 void process_init(void);
 tid_t process_execute (const char *file_name);
 int process_wait (tid_t);
-void process_exit (void);
+void process_exit (int status);
 void process_activate (void);
 
 /* A argv array. */
@@ -19,8 +19,9 @@ struct argv_array {
 
 /* Wait for TID. */
 struct waiting_tid {
-	tid_t tid;						/* Child tid */
+	tid_t tid;							/* Child tid. */
 	struct semaphore s;					/* Semaphore  for waiting list. */
+	int status;							/* Status of child tid. */
 	struct list_elem tidelem;			/* List to store argv addresses. */
 };
 

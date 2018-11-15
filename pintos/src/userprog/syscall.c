@@ -69,8 +69,8 @@ void exit(int status) {
 	//if ( status != 0 )
 	//	status = -1;
 	printf("%s: exit(%d)\n", thread_current()->name, status);
-	process_exit();
-	thread_exit();
+	//process_exit();
+	thread_exit(status);
 }
 
 bool create (const char * file , unsigned initial_size UNUSED) {
