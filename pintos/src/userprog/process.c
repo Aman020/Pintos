@@ -128,6 +128,8 @@ process_wait (tid_t child_tid UNUSED)
 		struct waiting_tid *wtid = list_entry (e, struct waiting_tid, tidelem);
 		if(wtid->tid == child_tid) {
 			//printf("r - %d -- SHIVRAJ \n", f->fd);
+			if(wtid->status != 0)
+				return -1;
 			sema_down(&wtid->s);
 			return wtid->status;
 		}
@@ -135,6 +137,7 @@ process_wait (tid_t child_tid UNUSED)
 	//printf("Creating element %d \n");
 	struct waiting_tid *wtid = (struct waiting_tid *)malloc( sizeof(struct waiting_tid) );
 	wtid->tid = child_tid;
+	wtid->status = 0;
 	sema_init(&wtid->s, 0);
 	list_push_front (&tid_list, &wtid->tidelem);
 	sema_down(&wtid->s);
@@ -152,7 +155,9 @@ process_wait (tid_t child_tid UNUSED)
 void
 process_exit (int status)
 {
+	
   struct thread *cur = thread_current ();
+  sys_allow_write(cur->name);
   uint32_t *pd;
 
   /* Destroy the current process's page directory and switch back
@@ -172,6 +177,7 @@ process_exit (int status)
       pagedir_destroy (pd);
     }
     //sema_up(&s);
+
     
     struct list_elem *e;
 	for (e = list_begin (&tid_list); e != list_end (&tid_list);	e = list_next (e)) {
@@ -184,8 +190,6 @@ process_exit (int status)
 		}
 	}
     //file_allow_write();
-    
-    sys_allow_write(cur->name);
 	
 }
 
@@ -396,7 +400,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
  done:
   /* We arrive here whether the load is successful or not. */
-  file_close (file);
+  //file_close (file);
   return success;
 }
 

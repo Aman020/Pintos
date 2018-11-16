@@ -2,14 +2,9 @@
 #include <debug.h>
 #include "filesys/inode.h"
 #include "threads/malloc.h"
+#include <stdio.h>
 
-/* An open file. */
-struct file 
-  {
-    struct inode *inode;        /* File's inode. */
-    off_t pos;                  /* Current position. */
-    bool deny_write;            /* Has file_deny_write() been called? */
-  };
+
 
 /* Opens a file for the given INODE, of which it takes ownership,
    and returns the new file.  Returns a null pointer if an
@@ -27,6 +22,7 @@ file_open (struct inode *inode)
     }
   else
     {
+		//printf("@@@@@@@@@@@@@@@@@@@@@@@@ \n");
       inode_close (inode);
       free (file);
       return NULL; 
@@ -47,9 +43,10 @@ file_close (struct file *file)
 {
   if (file != NULL)
     {
+		//printf("FILE closing it \n");
       file_allow_write (file);
       inode_close (file->inode);
-      free (file); 
+      //free (file);
     }
 }
 
@@ -96,6 +93,7 @@ file_write (struct file *file, const void *buffer, off_t size)
 {
   off_t bytes_written = inode_write_at (file->inode, buffer, size, file->pos);
   file->pos += bytes_written;
+  //printf("%d \n", bytes_written);
   return bytes_written;
 }
 
@@ -132,9 +130,11 @@ file_deny_write (struct file *file)
 void
 file_allow_write (struct file *file) 
 {
+	//printf("File allow %d %d if -> %d \n", file->inode->open_cnt, file->inode->deny_write_cnt, file->deny_write);
   ASSERT (file != NULL);
   if (file->deny_write) 
     {
+		//printf("In if cond %d \n ", file->deny_write);
       file->deny_write = false;
       inode_allow_write (file->inode);
     }

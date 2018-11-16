@@ -10,16 +10,6 @@
 /* Identifies an inode. */
 #define INODE_MAGIC 0x494e4f44
 
-/* On-disk inode.
-   Must be exactly BLOCK_SECTOR_SIZE bytes long. */
-struct inode_disk
-  {
-    block_sector_t start;               /* First data sector. */
-    off_t length;                       /* File size in bytes. */
-    unsigned magic;                     /* Magic number. */
-    uint32_t unused[125];               /* Not used. */
-  };
-
 /* Returns the number of sectors to allocate for an inode SIZE
    bytes long. */
 static inline size_t
@@ -27,17 +17,6 @@ bytes_to_sectors (off_t size)
 {
   return DIV_ROUND_UP (size, BLOCK_SECTOR_SIZE);
 }
-
-/* In-memory inode. */
-struct inode 
-  {
-    struct list_elem elem;              /* Element in inode list. */
-    block_sector_t sector;              /* Sector number of disk location. */
-    int open_cnt;                       /* Number of openers. */
-    bool removed;                       /* True if deleted, false otherwise. */
-    int deny_write_cnt;                 /* 0: writes ok, >0: deny writes. */
-    struct inode_disk data;             /* Inode content. */
-  };
 
 /* Returns the block device sector that contains byte offset POS
    within INODE.
@@ -145,8 +124,10 @@ inode_open (block_sector_t sector)
 struct inode *
 inode_reopen (struct inode *inode)
 {
+	//printf("Before : Reopening %d \n", inode->open_cnt);
   if (inode != NULL)
     inode->open_cnt++;
+  //printf("After : Reopening %d %d\n", inode->open_cnt, inode->sector);
   return inode;
 }
 
@@ -163,6 +144,7 @@ inode_get_inumber (const struct inode *inode)
 void
 inode_close (struct inode *inode) 
 {
+	//printf("Closing %d %d\n", inode->open_cnt, inode->sector);
   /* Ignore null pointer. */
   if (inode == NULL)
     return;
@@ -170,6 +152,7 @@ inode_close (struct inode *inode)
   /* Release resources if this was the last opener. */
   if (--inode->open_cnt == 0)
     {
+		//printf("Closing RELEASING RESOURCES  %d \n", inode->sector);
       /* Remove from inode list and release lock. */
       list_remove (&inode->elem);
  
@@ -183,6 +166,8 @@ inode_close (struct inode *inode)
 
       free (inode); 
     }
+    
+    //printf("After closing %d %d \n ", inode->open_cnt, inode->sector);
 }
 
 /* Marks INODE to be deleted when it is closed by the last caller who
@@ -258,12 +243,15 @@ off_t
 inode_write_at (struct inode *inode, const void *buffer_, off_t size,
                 off_t offset) 
 {
+	//printf("%d --- %d %d \n ", size, offset, inode->deny_write_cnt);
   const uint8_t *buffer = buffer_;
   off_t bytes_written = 0;
   uint8_t *bounce = NULL;
 
-  if (inode->deny_write_cnt)
+  if (inode->deny_write_cnt) {
+	 // printf("Not writing dues to deny %d %d %d\n", inode->deny_write_cnt, inode->open_cnt, inode->sector);
     return 0;
+}
 
   while (size > 0) 
     {
@@ -332,8 +320,10 @@ inode_deny_write (struct inode *inode)
 void
 inode_allow_write (struct inode *inode) 
 {
+	//printf("Decreasing the count %d  %d %d \n", inode->deny_write_cnt, inode->open_cnt, inode->sector);
   ASSERT (inode->deny_write_cnt > 0);
   ASSERT (inode->deny_write_cnt <= inode->open_cnt);
+  
   inode->deny_write_cnt--;
 }
 

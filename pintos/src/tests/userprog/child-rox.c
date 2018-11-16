@@ -21,7 +21,7 @@ try_write (void)
   quiet = true;
   CHECK ((handle = open ("child-rox")) > 1, "open \"child-rox\"");
   quiet = false;
-
+	msg("Opened child-rox");
   CHECK (write (handle, buffer, sizeof buffer) == 0,
          "try to write \"child-rox\"");
   
@@ -40,7 +40,7 @@ main (int argc UNUSED, char *argv[])
     {
       char cmd[128];
       int child;
-      
+     //msg("Inside for loop"); 
       snprintf (cmd, sizeof cmd, "child-rox %d", atoi (argv[1]) - 1);
       CHECK ((child = exec (cmd)) != -1, "exec \"%s\"", cmd);
       quiet = true;
