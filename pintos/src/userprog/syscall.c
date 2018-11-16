@@ -197,9 +197,9 @@ int read(int fd, void* buffer, unsigned size) {
 int filesize(int fd) {
 	struct list_elem *e;
 	for (e = list_begin (&file_list); e != list_end (&file_list);	e = list_next (e)) {
+		
 		struct file_descriptor *f = list_entry (e, struct file_descriptor, felem);
 		if(f->fd == fd) {
-			//printf("r - %d\n", fd);
 			return file_length (f->file);
 		}
 	}
