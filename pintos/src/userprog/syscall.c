@@ -116,6 +116,10 @@ int open(const char* file) {
 	}
 	*/
 	
+	if ( file == NULL ) {
+		exit(-1);
+		return -1;
+	}
 	//printf("Opeining file %s %d \n ", file);
 	
 	if(strcmp(file, "") == 0)
@@ -124,6 +128,10 @@ int open(const char* file) {
 	struct file_descriptor *file_d = (struct file_descriptor *)malloc( sizeof(struct file_descriptor) );
 	file_d->fd = list_size(&file_list) + 2;
 	file_d->file = filesys_open (file);
+	if( file_d->file == NULL ) {
+		free(file_d);
+		return -1;
+	}
 	//printf("Opeining file after %d \n", file_d->file->inode->sector);
 	//file_d->name = file;
 	//if( file_d->file != NULL)
@@ -163,6 +171,7 @@ int wait (tid_t pid ) {
 tid_t exec (const char * cmd_line ) {
 	//return execv(cmd_line);
 	//printf("%s\n", cmd_line);
+	
 	return process_execute(cmd_line);
 }
 

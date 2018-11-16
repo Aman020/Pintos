@@ -66,6 +66,9 @@ process_execute (const char *file_name)
 	
 	//printf("exe -: %s\n", token);
 	
+	if( filesys_open (token) == NULL ) 
+		return -1;
+		
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (token, PRI_DEFAULT, start_process, fn_copy);
   
