@@ -40,7 +40,6 @@ tid_t
 process_execute (const char *file_name) 
 {
 	//sema_init(&s, 0);
-
 	
   char *fn_copy, *fn_copy2;
   tid_t tid;
@@ -63,11 +62,15 @@ process_execute (const char *file_name)
 	token = strtok_r (fn_copy2, " ", &save_ptr);
 	//token = strtok_r (fn_copy2, " ", &save_ptr);
 	
-	sys_deny_write(token);
+	//sys_deny_write(token);
+	
 	//printf("exe -: %s\n", token);
 	
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (token, PRI_DEFAULT, start_process, fn_copy);
+  
+  sys_deny_write(token, tid);
+  
   if (tid == TID_ERROR) {
     palloc_free_page (fn_copy); 
     palloc_free_page (fn_copy2); 
@@ -157,7 +160,7 @@ process_exit (int status)
 {
 	
   struct thread *cur = thread_current ();
-  sys_allow_write(cur->name);
+  sys_allow_write(cur->tid);
   uint32_t *pd;
 
   /* Destroy the current process's page directory and switch back

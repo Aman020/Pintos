@@ -92,8 +92,11 @@ bool create (const char * file , unsigned initial_size UNUSED) {
 	*/
 	//bool success = filesys_create(file, initial_size);
 	//open(file);
-	if ( file == NULL )
-		return -1;
+	//printf("%d \n", file == NULL);
+	if ( file == NULL ) {
+		exit(-1);
+		return false;
+	}
 	return filesys_create(file, initial_size);
 }
 
@@ -113,13 +116,16 @@ int open(const char* file) {
 	}
 	*/
 	
-	//printf("Opeining file %s \n ", file);
+	//printf("Opeining file %s %d \n ", file);
+	
+	if(strcmp(file, "") == 0)
+		return -1;
 	
 	struct file_descriptor *file_d = (struct file_descriptor *)malloc( sizeof(struct file_descriptor) );
 	file_d->fd = list_size(&file_list) + 2;
 	file_d->file = filesys_open (file);
 	//printf("Opeining file after %d \n", file_d->file->inode->sector);
-	file_d->name = file;
+	//file_d->name = file;
 	//if( file_d->file != NULL)
 	//list_insert (struct list_elem *, struct list_elem *);
 	list_push_front (&file_list, &file_d->felem);
@@ -198,7 +204,8 @@ void close (int fd ) {
 	}
 }
 
-void sys_deny_write(char *token)  {
+//void sys_deny_write(char *token)  {
+void sys_deny_write(char *token, tid_t tid)  {
 	/*
 	struct list_elem *e;
 	for (e = list_begin (&file_list); e != list_end (&file_list);	e = list_next (e)) {
@@ -213,21 +220,24 @@ void sys_deny_write(char *token)  {
 	struct file_descriptor *file_d = (struct file_descriptor *)malloc( sizeof(struct file_descriptor) );
 	file_d->fd = list_size(&file_list) + 2;
 	file_d->file = filesys_open (token);
-	file_d->name = token;
+	//file_d->name = token;
+	file_d->tid = tid;
 	//printf("Deny write %s %p\n", token, file_d->file);
 	file_deny_write(file_d->file);
 	
 	list_push_front (&file_list, &file_d->felem);
 }
 
-void sys_allow_write(char *name) {
+//void sys_allow_write(char *name) {
+void sys_allow_write(tid_t tid) {
 	//printf("In sys allow %s \n", name);
 	struct list_elem *e;
 	for (e = list_begin (&file_list); e != list_end (&file_list);	e = list_next (e)) {
 		struct file_descriptor *f = list_entry (e, struct file_descriptor, felem);
 		//printf(" %s == %s is %d \n ", f->name, name, f->name == name );
 		//printf("%p \n", f->file);
-		if(strcmp(f->name, name) == 0) {
+		//if(strcmp(f->name, name) == 0) {
+		if(f->tid == tid ) {
 			//f->file->inode->sector = 107;
 			//printf("rrrr $$$$$$$$$$$$ - %s, %d %d %d %d\n", name, f->file->deny_write, f->file->inode->sector, f->file->inode->open_cnt, f->file->inode->deny_write_cnt);
 			

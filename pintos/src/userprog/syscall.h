@@ -13,9 +13,12 @@ tid_t exec (const char * cmd_line );
 int wait (tid_t pid );
 void seek (int fd , unsigned position );
 void close (int fd );
+void halt (void);
 
-void sys_deny_write(char *);
-void sys_allow_write(char *);
+//void sys_deny_write(char *);
+//void sys_allow_write(char *);
+void sys_deny_write(char *, tid_t tid);
+void sys_allow_write(tid_t tid);
 
 struct file;
 
@@ -23,7 +26,8 @@ struct file;
 struct file_descriptor {
 	int fd;								/* File descriptor */
 	struct file *file;					/* corresponding struct file pointer */
-	const char *name;					/* File name */
+	//const char *name;					/* File name */
+	tid_t tid;							/* Blocked file tid for writing */
 	struct list_elem felem;				/* List to store the structure. */
 };
 
