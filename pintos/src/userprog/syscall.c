@@ -10,6 +10,9 @@
 #include "threads/malloc.h"
 #include "userprog/process.h"
 #include "filesys/inode.h"
+#include "threads/vaddr.h"
+#include "userprog/pagedir.h"
+#include "threads/thread.h"
 
 static void syscall_handler (struct intr_frame *);
 
@@ -30,15 +33,28 @@ syscall_handler (struct intr_frame *f UNUSED)
   
 	switch(sys_code) {
 		case SYS_WRITE:
+						if ( pagedir_get_page(thread_current()->pagedir, (const void *) (*((int*)f->esp + 2) )  ) == NULL ) {
+							exit(-1);
+							break;
+						}
 						f->eax = write(*((int*)f->esp + 1), (void *) (*((int*)f->esp + 2) ), (unsigned) (*((int*)f->esp + 3)) );
 						break;
 		case SYS_EXIT:
 						exit(*((int*)f->esp + 1));
 						break;
 		case SYS_CREATE:
+						if ( pagedir_get_page(thread_current()->pagedir, (const void *) (*((int*)f->esp + 1) )  ) == NULL ) {
+							exit(-1);
+							break;
+						}
 						f->eax = create((char *) (*((int*)f->esp + 1) ), (unsigned) (*((int*)f->esp + 2) ) );
 						break;
 		case SYS_OPEN:
+						if ( pagedir_get_page(thread_current()->pagedir, (const void *) (*((int*)f->esp + 1) )  ) == NULL ) {
+							exit(-1);
+							break;
+						}
+						
 						f->eax = open( (char *) (*((int*)f->esp + 1) ) );
 						break;
 		case SYS_READ:
@@ -48,9 +64,19 @@ syscall_handler (struct intr_frame *f UNUSED)
 						f->eax = filesize( *((int*)f->esp + 1) );
 						break;
 		case SYS_EXEC:
+						if ( pagedir_get_page(thread_current()->pagedir, (const void *) (*((int*)f->esp + 1) )  ) == NULL ) {
+							exit(-1);
+							break;
+						}
 						f->eax = exec( (char * ) ( *((int*)f->esp + 1) ) );
 						break;
 		case SYS_WAIT:
+						/*
+						if ( pagedir_get_page(thread_current()->pagedir, (const void *) (*((int*)f->esp + 1) )  ) == NULL ) {
+							exit(-1);
+							break;
+						}
+						*/
 						f->eax = wait( (tid_t ) ( *((int*)f->esp + 1) ) );
 						break;
 		case SYS_SEEK:
@@ -97,6 +123,12 @@ bool create (const char * file , unsigned initial_size UNUSED) {
 		exit(-1);
 		return false;
 	}
+	/*
+	if( !is_kernel_vaddr(file) ) {
+		exit(-1);
+		return false;
+	}
+	*/
 	return filesys_create(file, initial_size);
 }
 
@@ -115,6 +147,11 @@ int open(const char* file) {
 		}
 	}
 	*/
+	
+	if( !is_user_vaddr((void *)file) ) {
+		exit(-1);
+		return false;
+	}
 	
 	if ( file == NULL ) {
 		exit(-1);
@@ -141,6 +178,10 @@ int open(const char* file) {
 }
 
 int read(int fd, void* buffer, unsigned size) {
+	if (!is_user_vaddr (buffer + size)) {
+		exit(-1);
+		return -1;
+	}
 	struct list_elem *e;
 	for (e = list_begin (&file_list); e != list_end (&file_list);	e = list_next (e)) {
 		struct file_descriptor *f = list_entry (e, struct file_descriptor, felem);
@@ -165,17 +206,33 @@ int filesize(int fd) {
 }
 
 int wait (tid_t pid ) {
+	//printf("%d \n", pid);
+	if ( !does_pid_exist ( pid) ) {
+		//printf("%d \n", pid);
+		if ( !does_pid_waiting(pid) ) {				
+			exit(-1);
+			return -1;
+		}
+	}
 	return process_wait(pid);
 }
 
 tid_t exec (const char * cmd_line ) {
 	//return execv(cmd_line);
-	//printf("%s\n", cmd_line);
+	//printf("%d %d\n", !is_user_vaddr (cmd_line), is_kernel_vaddr(cmd_line) );
+	
+	/*
+	if (!is_kernel_vaddr(cmd_line) ) {
+		exit(-1);
+		return -1;
+	}
+	*/
 	
 	return process_execute(cmd_line);
 }
 
 int write (int fd , const void * buffer , unsigned size ) {
+	
 	if ( fd == STDOUT_FILENO ) {
 		//printf("Need to write to console %s\n", (char *)buffer);
 		putbuf(buffer, size);

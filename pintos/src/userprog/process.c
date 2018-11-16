@@ -635,3 +635,20 @@ install_page (void *upage, void *kpage, bool writable)
   return (pagedir_get_page (t->pagedir, upage) == NULL
           && pagedir_set_page (t->pagedir, upage, kpage, writable));
 }
+
+bool does_pid_waiting( tid_t child_tid ){
+	struct list_elem *e;
+	
+	for (e = list_begin (&tid_list); e != list_end (&tid_list);	e = list_next (e)) {
+		struct waiting_tid *wtid = list_entry (e, struct waiting_tid, tidelem);
+		if(wtid->tid == child_tid) {
+			//printf("r - %d -- SHIVRAJ \n", f->fd);
+			//if(wtid->status != 0)
+			//	return -1;
+			//sema_down(&wtid->s);
+			//return wtid->status;
+			return true;
+		}
+	}
+	return false;
+}

@@ -10,6 +10,7 @@ tid_t process_execute (const char *file_name);
 int process_wait (tid_t);
 void process_exit (int status);
 void process_activate (void);
+bool does_pid_waiting( tid_t child_tid );
 
 /* A argv array. */
 struct argv_array {
