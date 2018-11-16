@@ -169,6 +169,7 @@ int open(const char* file) {
 		free(file_d);
 		return -1;
 	}
+	file_d->owner = thread_current()->tid;
 	//printf("Opeining file after %d \n", file_d->file->inode->sector);
 	//file_d->name = file;
 	//if( file_d->file != NULL)
@@ -208,7 +209,6 @@ int filesize(int fd) {
 int wait (tid_t pid ) {
 	//printf("%d \n", pid);
 	if ( !does_pid_exist ( pid) ) {
-		//printf("%d \n", pid);
 		if ( !does_pid_waiting(pid) ) {				
 			exit(-1);
 			return -1;
@@ -263,11 +263,13 @@ void close (int fd ) {
 	struct list_elem *e;
 	for (e = list_begin (&file_list); e != list_end (&file_list);	e = list_next (e)) {
 		struct file_descriptor *f = list_entry (e, struct file_descriptor, felem);
-		if(f->fd == fd) {
+		if(f->fd == fd && f->owner == thread_current()->tid ) {
 			//printf("FILE -----------+++++++++++++++++ Closing the file %s \n", f->name);
 			file_close (f->file);
+			return;
 		}
 	}
+	exit(-1);
 }
 
 //void sys_deny_write(char *token)  {

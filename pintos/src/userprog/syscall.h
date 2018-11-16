@@ -29,6 +29,7 @@ struct file_descriptor {
 	//const char *name;					/* File name */
 	tid_t tid;							/* Blocked file tid for writing */
 	struct list_elem felem;				/* List to store the structure. */
+	tid_t owner;						/* Owner of the file */
 };
 
 #endif /* userprog/syscall.h */
