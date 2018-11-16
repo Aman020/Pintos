@@ -199,25 +199,25 @@ void close (int fd ) {
 }
 
 void sys_deny_write(char *token)  {
-	
+	/*
 	struct list_elem *e;
 	for (e = list_begin (&file_list); e != list_end (&file_list);	e = list_next (e)) {
 		struct file_descriptor *f = list_entry (e, struct file_descriptor, felem);
 		if(strcmp(f->name, token) == 0) {
-		//	printf(" $$$$$$$$$$$$$$$$ Deny write %s %d %d\n", token, f->file->inode->sector, f->file->inode->deny_write_cnt);
+			//printf(" $$$$$$$$$$$$$$$$ Deny write %s %d %d\n", token, f->file->inode->sector, f->file->inode->deny_write_cnt);
 			file_deny_write(f->file);
-			return;
+			//return;
 		}
 	}
-	
+	*/
 	struct file_descriptor *file_d = (struct file_descriptor *)malloc( sizeof(struct file_descriptor) );
 	file_d->fd = list_size(&file_list) + 2;
 	file_d->file = filesys_open (token);
 	file_d->name = token;
-	//printf("Deny write %s \n", token);
+	//printf("Deny write %s %p\n", token, file_d->file);
 	file_deny_write(file_d->file);
 	
-	
+	list_push_front (&file_list, &file_d->felem);
 }
 
 void sys_allow_write(char *name) {
@@ -226,9 +226,10 @@ void sys_allow_write(char *name) {
 	for (e = list_begin (&file_list); e != list_end (&file_list);	e = list_next (e)) {
 		struct file_descriptor *f = list_entry (e, struct file_descriptor, felem);
 		//printf(" %s == %s is %d \n ", f->name, name, f->name == name );
+		//printf("%p \n", f->file);
 		if(strcmp(f->name, name) == 0) {
 			//f->file->inode->sector = 107;
-		//	printf("rrrr $$$$$$$$$$$$ - %s, %d %d %d %d\n", name, f->file->pos, f->file->inode->sector, f->file->inode->open_cnt, f->file->inode->deny_write_cnt);
+			//printf("rrrr $$$$$$$$$$$$ - %s, %d %d %d %d\n", name, f->file->deny_write, f->file->inode->sector, f->file->inode->open_cnt, f->file->inode->deny_write_cnt);
 			
 			file_allow_write (f->file);
 			//return;

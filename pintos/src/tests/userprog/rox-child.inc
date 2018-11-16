@@ -23,10 +23,10 @@ test_main (void)
   /* Execute child-rox and wait for it. */
   CHECK ((child = exec (child_cmd)) != -1, "exec \"%s\"", child_cmd);
   quiet = true;
-	msg("Waiting for child");
+	//msg("Waiting for child");
   CHECK (wait (child) == 12, "wait for child");
   quiet = false;
-	msg("Next write");
+	//msg("Next write");
   /* Write to child-rox again. */
   seek (handle, 0);
   CHECK (write (handle, buffer, sizeof buffer) == (int) sizeof buffer,

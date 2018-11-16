@@ -118,8 +118,10 @@ file_deny_write (struct file *file)
 {
   ASSERT (file != NULL);
   if (!file->deny_write) 
+  //if( file->inode->deny_write_cnt < file->inode->open_cnt)
     {
       file->deny_write = true;
+      //printf("Converting Deny write to true %d \n", file->inode->sector);
       inode_deny_write (file->inode);
     }
 }
@@ -133,6 +135,7 @@ file_allow_write (struct file *file)
 	//printf("File allow %d %d if -> %d \n", file->inode->open_cnt, file->inode->deny_write_cnt, file->deny_write);
   ASSERT (file != NULL);
   if (file->deny_write) 
+  //if(file->inode->deny_write_cnt)
     {
 		//printf("In if cond %d \n ", file->deny_write);
       file->deny_write = false;
