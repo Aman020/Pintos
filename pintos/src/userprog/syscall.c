@@ -29,6 +29,12 @@ syscall_init (void)
 static void
 syscall_handler (struct intr_frame *f UNUSED) 
 {
+	//printf("Inside handler : \n");
+	if ( pagedir_get_page(thread_current()->pagedir, f->esp ) == NULL ) {
+		exit(-1);
+		return;
+	}
+	//printf("Running handler : \n");
   
   int sys_code = *(int*)f->esp;
   
@@ -94,7 +100,8 @@ syscall_handler (struct intr_frame *f UNUSED)
 						halt();
 						break;
 		default:
-			break;
+						//exit(-1);
+						break;
 			//printf("default : %d \n", sys_code);
 	}
   
