@@ -13,6 +13,7 @@
 #include "threads/vaddr.h"
 #include "userprog/pagedir.h"
 #include "threads/thread.h"
+#include "devices/shutdown.h"
 
 static void syscall_handler (struct intr_frame *);
 
@@ -40,6 +41,10 @@ syscall_handler (struct intr_frame *f UNUSED)
 						f->eax = write(*((int*)f->esp + 1), (void *) (*((int*)f->esp + 2) ), (unsigned) (*((int*)f->esp + 3)) );
 						break;
 		case SYS_EXIT:
+						if ( !is_user_vaddr( (const void *) (*((int*)f->esp + 1) )  ) ) {
+							exit(-1);
+							break;
+						}
 						exit(*((int*)f->esp + 1));
 						break;
 		case SYS_CREATE:
@@ -85,6 +90,9 @@ syscall_handler (struct intr_frame *f UNUSED)
 		case SYS_CLOSE:
 						close( *((int*)f->esp + 1) );
 						break;
+		case SYS_HALT:
+						halt();
+						break;
 		default:
 			break;
 			//printf("default : %d \n", sys_code);
@@ -96,12 +104,13 @@ syscall_handler (struct intr_frame *f UNUSED)
 }
 
 void halt (void) {
-	
+	shutdown_power_off();
 }
 
 void exit(int status) {
 	//if ( status != 0 )
 	//	status = -1;
+	
 	printf("%s: exit(%d)\n", thread_current()->name, status);
 	//process_exit();
 	thread_exit(status);
