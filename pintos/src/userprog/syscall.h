@@ -15,6 +15,9 @@ void seek (int fd , unsigned position );
 void close (int fd );
 void halt (void);
 
+//void lock_acquire_sys(void);
+//void lock_release_sys(void);
+
 //void sys_deny_write(char *);
 //void sys_allow_write(char *);
 void sys_deny_write(char *, tid_t tid);

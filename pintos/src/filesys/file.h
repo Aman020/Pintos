@@ -14,6 +14,8 @@ struct file
     bool deny_write;            /* Has file_deny_write() been called? */
   };
 
+void init_file(void);
+
 /* Opening and closing files. */
 struct file *file_open (struct inode *);
 struct file *file_reopen (struct file *);

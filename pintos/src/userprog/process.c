@@ -27,9 +27,12 @@ static bool load (const char *cmdline, void (**eip) (void), void **esp);
 static struct list tid_list;
 //static struct semaphore s;
 
+struct lock lp;
+
 void process_init() {
 	list_init(&tid_list);
 	//sema_init(&s, 0);
+	lock_init(&lp);
 }
 
 /* Starts a new thread running a user program loaded from
@@ -65,14 +68,21 @@ process_execute (const char *file_name)
 	//sys_deny_write(token);
 	
 	//printf("exe -: %s\n", token);
-	
-	if( filesys_open (token) == NULL ) 
+	//lock_acquire_sys();
+	if( filesys_open (token) == NULL ) {
+		//lock_release_sys();
 		return -1;
-		
+	}
+	//lock_release_sys();
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (token, PRI_DEFAULT, start_process, fn_copy);
   
   sys_deny_write(token, tid);
+	struct waiting_tid *wtid = (struct waiting_tid *)malloc( sizeof(struct waiting_tid) );
+	wtid->tid = tid;
+	wtid->status = 0;
+	sema_init(&wtid->s, 0);
+	list_push_front (&tid_list, &wtid->tidelem);
   
   if (tid == TID_ERROR) {
     palloc_free_page (fn_copy); 
@@ -128,19 +138,26 @@ process_wait (tid_t child_tid UNUSED)
 {
 	
 	struct list_elem *e;
-	//printf("Calling wait \n");
-	
+	//printf("Calling wait %d \n", child_tid);
+	int t;
 	for (e = list_begin (&tid_list); e != list_end (&tid_list);	e = list_next (e)) {
 		struct waiting_tid *wtid = list_entry (e, struct waiting_tid, tidelem);
 		if(wtid->tid == child_tid) {
-			//printf("r - %d -- SHIVRAJ \n", f->fd);
-			if(wtid->status != 0)
-				return -1;
+			//printf("r - %d -- SHIVRAJ \n", wtid->tid);
+			if(wtid->status != 0) {
+				//return wtid->status;
+				t = wtid->status;
+				wtid->status = -1;
+				return t;
+			}
 			sema_down(&wtid->s);
-			return wtid->status;
+			//return wtid->status;
+			t = wtid->status;
+			wtid->status = -1;
+			return t;
 		}
 	}
-	//printf("Creating element %d \n");
+	//printf("Creating element \n");
 	struct waiting_tid *wtid = (struct waiting_tid *)malloc( sizeof(struct waiting_tid) );
 	wtid->tid = child_tid;
 	wtid->status = 0;
@@ -161,7 +178,7 @@ process_wait (tid_t child_tid UNUSED)
 void
 process_exit (int status)
 {
-	
+//	lock_release(&lp);
   struct thread *cur = thread_current ();
   sys_allow_write(cur->tid);
   uint32_t *pd;
@@ -291,7 +308,7 @@ static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
 bool
 load (const char *file_name, void (**eip) (void), void **esp) 
 {
-	
+	lock_acquire(&lp);
   struct thread *t = thread_current ();
   struct Elf32_Ehdr ehdr;
   struct file *file = NULL;
@@ -317,8 +334,9 @@ load (const char *file_name, void (**eip) (void), void **esp)
 	
   /* Open executable file. */
   file = filesys_open (token);
-  if (file == NULL) 
+  if (file == NULL)
     {
+		//printf("file is NULL \n");
       printf ("load: %s: open failed\n", token);
       goto done; 
     }
@@ -407,6 +425,8 @@ load (const char *file_name, void (**eip) (void), void **esp)
  done:
   /* We arrive here whether the load is successful or not. */
   //file_close (file);
+  //printf("DONE \n");
+  lock_release(&lp);
   return success;
 }
 

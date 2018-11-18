@@ -19,11 +19,15 @@ static void syscall_handler (struct intr_frame *);
 
 static struct list file_list;
 
+struct lock l;
+
 void
 syscall_init (void) 
 {
 	intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
 	list_init(&file_list);
+	init_file();
+	lock_init(&l);
 }
 
 static void
@@ -37,34 +41,46 @@ syscall_handler (struct intr_frame *f UNUSED)
 	//printf("Running handler : \n");
   
   int sys_code = *(int*)f->esp;
-  
+	//printf("SYS : %d \n", sys_code);
 	switch(sys_code) {
 		case SYS_WRITE:
+						lock_acquire(&l);
 						if ( pagedir_get_page(thread_current()->pagedir, (const void *) (*((int*)f->esp + 2) )  ) == NULL ) {
+							lock_release(&l);
 							exit(-1);
 							break;
 						}
+						lock_release(&l);
 						f->eax = write(*((int*)f->esp + 1), (void *) (*((int*)f->esp + 2) ), (unsigned) (*((int*)f->esp + 3)) );
 						break;
 		case SYS_EXIT:
+						lock_acquire(&l);
 						if ( !is_user_vaddr( (const void *) (*((int*)f->esp + 1) )  ) ) {
+							lock_release(&l);
 							exit(-1);
 							break;
 						}
+						lock_release(&l);
 						exit(*((int*)f->esp + 1));
 						break;
 		case SYS_CREATE:
+						lock_acquire(&l);
 						if ( pagedir_get_page(thread_current()->pagedir, (const void *) (*((int*)f->esp + 1) )  ) == NULL ) {
+							lock_release(&l);
 							exit(-1);
 							break;
 						}
+						lock_release(&l);
 						f->eax = create((char *) (*((int*)f->esp + 1) ), (unsigned) (*((int*)f->esp + 2) ) );
 						break;
 		case SYS_OPEN:
+						lock_acquire(&l);
 						if ( pagedir_get_page(thread_current()->pagedir, (const void *) (*((int*)f->esp + 1) )  ) == NULL ) {
+							lock_release(&l);
 							exit(-1);
 							break;
 						}
+						lock_release(&l);
 						
 						f->eax = open( (char *) (*((int*)f->esp + 1) ) );
 						break;
@@ -75,13 +91,17 @@ syscall_handler (struct intr_frame *f UNUSED)
 						f->eax = filesize( *((int*)f->esp + 1) );
 						break;
 		case SYS_EXEC:
+						lock_acquire(&l);
 						if ( pagedir_get_page(thread_current()->pagedir, (const void *) (*((int*)f->esp + 1) )  ) == NULL ) {
+							lock_release(&l);
 							exit(-1);
 							break;
 						}
+						lock_release(&l);
 						f->eax = exec( (char * ) ( *((int*)f->esp + 1) ) );
 						break;
 		case SYS_WAIT:
+					
 						/*
 						if ( pagedir_get_page(thread_current()->pagedir, (const void *) (*((int*)f->esp + 1) )  ) == NULL ) {
 							exit(-1);
@@ -145,7 +165,10 @@ bool create (const char * file , unsigned initial_size UNUSED) {
 		return false;
 	}
 	*/
-	return filesys_create(file, initial_size);
+	lock_acquire(&l);
+	bool t = filesys_create(file, initial_size);
+	lock_release(&l);
+	return t;
 }
 
 
@@ -180,7 +203,9 @@ int open(const char* file) {
 	
 	struct file_descriptor *file_d = (struct file_descriptor *)malloc( sizeof(struct file_descriptor) );
 	file_d->fd = list_size(&file_list) + 2;
+	lock_acquire(&l);
 	file_d->file = filesys_open (file);
+	lock_release(&l);
 	if( file_d->file == NULL ) {
 		free(file_d);
 		return -1;
@@ -200,11 +225,15 @@ int read(int fd, void* buffer, unsigned size) {
 		return -1;
 	}
 	struct list_elem *e;
+	int t;
 	for (e = list_begin (&file_list); e != list_end (&file_list);	e = list_next (e)) {
 		struct file_descriptor *f = list_entry (e, struct file_descriptor, felem);
 		if(f->fd == fd) {
 			//printf("r - %d\n", fd);
-			return file_read (f->file, buffer, size);
+			lock_acquire(&l);
+			t = file_read (f->file, buffer, size);
+			lock_release(&l);
+			return t;
 		}
 	}
 	return 0;
@@ -215,22 +244,35 @@ int filesize(int fd) {
 	for (e = list_begin (&file_list); e != list_end (&file_list);	e = list_next (e)) {
 		
 		struct file_descriptor *f = list_entry (e, struct file_descriptor, felem);
+		int t;
 		if(f->fd == fd) {
-			return file_length (f->file);
+			lock_acquire(&l);
+			t = file_length (f->file);
+			lock_release(&l);
+			return t;
 		}
 	}
 	return 0;
 }
 
 int wait (tid_t pid ) {
-	//printf("%d \n", pid);
+	
+	//printf("wait %d \n", pid);
+	
 	if ( !does_pid_exist ( pid) ) {
 		if ( !does_pid_waiting(pid) ) {				
+			//printf("calling -1 %d \n", pid);
 			exit(-1);
 			return -1;
 		}
 	}
-	return process_wait(pid);
+	
+	//lock_acquire(&l);
+	//
+	int t = process_wait(pid);
+	//lock_release(&l);
+	//printf("done waiting %d \n", pid);
+	return t;
 }
 
 tid_t exec (const char * cmd_line ) {
@@ -244,7 +286,13 @@ tid_t exec (const char * cmd_line ) {
 	}
 	*/
 	
-	return process_execute(cmd_line);
+	lock_acquire(&l);
+	//printf("Exec %s \n", cmd_line);
+	tid_t t = process_execute(cmd_line);
+	
+	lock_release(&l);
+	//printf("Done Exec %s \n", cmd_line);
+	return t;
 }
 
 int write (int fd , const void * buffer , unsigned size ) {
@@ -256,10 +304,14 @@ int write (int fd , const void * buffer , unsigned size ) {
 	}
 	//printf("In write %d \n", fd);
 	struct list_elem *e;
+	int t;
 	for (e = list_begin (&file_list); e != list_end (&file_list);	e = list_next (e)) {
 		struct file_descriptor *f = list_entry (e, struct file_descriptor, felem);
 		if(f->fd == fd) {
-			return file_write (f->file, buffer, size);
+			lock_acquire(&l);
+			t = file_write (f->file, buffer, size);
+			lock_release(&l);
+			return t;
 		}
 	}
 	return 0;
@@ -270,7 +322,9 @@ void seek (int fd , unsigned position ) {
 	for (e = list_begin (&file_list); e != list_end (&file_list);	e = list_next (e)) {
 		struct file_descriptor *f = list_entry (e, struct file_descriptor, felem);
 		if(f->fd == fd) {
+			lock_acquire(&l);
 			file_seek (f->file, position);
+			lock_release(&l);
 		}
 	}
 }
@@ -281,7 +335,9 @@ void close (int fd ) {
 		struct file_descriptor *f = list_entry (e, struct file_descriptor, felem);
 		if(f->fd == fd && f->owner == thread_current()->tid ) {
 			//printf("FILE -----------+++++++++++++++++ Closing the file %s \n", f->name);
+			lock_acquire(&l);
 			file_close (f->file);
+			lock_release(&l);
 			return;
 		}
 	}
@@ -301,6 +357,7 @@ void sys_deny_write(char *token, tid_t tid)  {
 		}
 	}
 	*/
+	
 	struct file_descriptor *file_d = (struct file_descriptor *)malloc( sizeof(struct file_descriptor) );
 	file_d->fd = list_size(&file_list) + 2;
 	file_d->file = filesys_open (token);
@@ -324,9 +381,21 @@ void sys_allow_write(tid_t tid) {
 		if(f->tid == tid ) {
 			//f->file->inode->sector = 107;
 			//printf("rrrr $$$$$$$$$$$$ - %s, %d %d %d %d\n", name, f->file->deny_write, f->file->inode->sector, f->file->inode->open_cnt, f->file->inode->deny_write_cnt);
-			
+			//lock_acquire(&l);
 			file_allow_write (f->file);
+			//lock_release(&l);
 			//return;
 		}
 	}
 }
+
+/*
+void lock_acquire_sys(){
+	lock_acquire(&l);
+}
+*/
+/*
+void lock_release_sys() {
+	lock_release(&l);
+}
+*/

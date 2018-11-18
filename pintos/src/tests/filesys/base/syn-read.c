@@ -25,7 +25,8 @@ test_main (void)
   CHECK (write (fd, buf, sizeof buf) > 0, "write \"%s\"", file_name);
   msg ("close \"%s\"", file_name);
   close (fd);
-
+//	msg("Exec child ... ");
   exec_children ("child-syn-read", children, CHILD_CNT);
+//	msg("Waitng child ...");
   wait_children (children, CHILD_CNT);
 }
